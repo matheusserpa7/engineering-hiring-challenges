@@ -1,0 +1,9 @@
+# Prettier also skips everything in .gitignore.
+
+# The company's brief and starter material: not ours to reformat.
+roles/
+
+# Markdown is hand-wrapped; reformatting would churn every table.
+*.md
+
+package-lock.json

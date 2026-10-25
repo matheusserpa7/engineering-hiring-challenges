@@ -14,7 +14,7 @@ put the agent rules in place before the code they govern. Budget: about 1 h 15 i
     `git ls-files --eol` shows the new files as LF.
   - Commit: `chore: set up npm workspaces pinned to Node 24`
 
-- [ ] **T2 — TypeScript, ESLint and Prettier**
+- [x] **T2 — TypeScript, ESLint and Prettier**
   - Files: `tsconfig.base.json`, `eslint.config.js`, `.prettierrc.json`, `.prettierignore`,
     root scripts
   - Done: `npm run lint` and `npm run format:check` pass with zero warnings. A scratch file
@@ -77,4 +77,11 @@ put the agent rules in place before the code they govern. Budget: about 1 h 15 i
 
 ## Notes recorded during execution
 
-- (filled in as tasks close: timings, deviations, spec updates)
+- T2: root scripts are only `lint`, `format`, `format:check` for now. `typecheck`, `build`,
+  `test` and `dev` arrive with the workspaces they run (T6–T8), not as placeholders.
+- T2: Prettier runs as `prettier .` and `.prettierignore` excludes `*.md`, `roles/` and the
+  lockfile. Same outcome as an extension list, with one source of truth.
+- T2: `defineConfig` from `eslint/config` instead of the deprecated `tseslint.config()`.
+- T2: guard check passed: a scratch `.ts` and `.vue` failed on `no-restricted-globals`,
+  `no-restricted-properties`, `no-restricted-syntax` (toFixed) and `vue/no-v-html`. Deleted.
+- T2 review: the `code-reviewer` subagent only exists from T4, whose Done runs it on this diff.
