@@ -1,0 +1,7 @@
+# Force LF in the working tree on every OS. Windows checkouts with core.autocrlf=true
+# would otherwise hand CRLF files to Linux containers.
+* text=auto eol=lf
+
+*.pdf binary
+*.png binary
+*.ico binary

@@ -1,0 +1,14 @@
+{
+  "name": "aangan-donations",
+  "private": true,
+  "type": "module",
+  "description": "Donation tracking page for the HCC Aangan campaign — full-stack take-home",
+  "workspaces": [
+    "packages/shared",
+    "apps/api",
+    "apps/web"
+  ],
+  "engines": {
+    "node": ">=24 <25"
+  }
+}
