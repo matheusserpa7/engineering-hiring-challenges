@@ -12,7 +12,7 @@ fix → tick here → diff summary, decisions and commit message → Matheus say
     already enforces it). `zod` is a runtime dependency of shared.
   - Commit: `feat(shared): add exact dollar parsing and cent formatting`
 
-- [ ] **T2 — Kysely, the int8 parser and the first migration**
+- [x] **T2 — Kysely, the int8 parser and the first migration**
   - Files: `apps/api/src/db/{pool,database,migrate}.ts`, `apps/api/src/db/migrations/0001_initial.ts`,
     `apps/api/src/scripts/migrate.ts`, `apps/api/{vitest.config.ts,test/global-setup.ts,test/db/migration.test.ts,package.json,tsconfig.json}`,
     root `package.json` (`db:migrate`)
@@ -88,3 +88,22 @@ T1 comes first: T4 parses dollars with it. T2 comes before T5 (schema) and T3 be
     - `\d` matches ASCII digits only, so Devanagari or full-width digits are rejected.
     - `trim()` removes non-breaking spaces.
     - The regex can't backtrack catastrophically: a 1 MB input takes under 1 ms.
+- T2, done. Test-first: red because the modules were missing.
+  - Two deliberate mutations proved the tests bite: the int8 parser turned off gave 6
+    failures; the amount lower bound set to 1 gave 2.
+  - The Testcontainers/Windows risk is resolved (tech spec §11).
+  - Review, 3 majors, fixed after the spec was updated first:
+    - The int8 parser didn't cover `int8[]`, so `preset_cents` arrived as `string[]`
+      (§4).
+    - The hand-written types had no typed round-trip test (§4, §9).
+    - Integration files ran in parallel and truncated each other's tables; they now run
+      one at a time (§9).
+  - Minors accepted:
+    - No concurrent-migration test: the advisory lock is Kysely's documented behaviour.
+    - No FK tests for `refunds.actor_id` / `sessions.donor_id`: not in §9.
+    - `loadConfig()` outside the `try` in the migrate script stays; it's cosmetic.
+  - Forward notes:
+    - Spec 005: filter admin search on `email::text ILIKE …`, so it uses the trigram
+      index (tech spec §3).
+    - T5: `start.ts` gets its own pool with a longer `query_timeout` for migrate + seed,
+      or the decision is revisited (§11).

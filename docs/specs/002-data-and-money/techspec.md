@@ -9,7 +9,7 @@ Status: draft, awaiting approval · Implements [`prd.md`](prd.md) · Inherits
 packages/shared/src/money.ts        parseDollarsToCents, formatCents, progressPercent,
                                     MIN/MAX_DONATION_CENTS, AmountCentsSchema (Zod)
 apps/api/src/db/
-  pool.ts                           + per-pool int8 parser (safe integer or throw)
+  pool.ts                           + per-pool int8 / int8[] parser (safe integer or throw)
   database.ts                       Kysely instance + the hand-written Database types
   migrations/0001_initial.ts        the whole schema, up only
   migrate.ts                        runMigrations(db): Kysely Migrator, static provider
@@ -83,7 +83,10 @@ builder plus `sql` fragments for `CHECK`s and extensions. The details that matte
 - **Indexes,** each with a one-line comment in the migration:
   - `donations (campaign_id, status, created_at desc)`, for the public list and totals;
   - `donations (donor_id, created_at desc)`, for donor history;
-  - GIN `gin_trgm_ops` on `donations.donor_name` and `donors.email`, for admin search.
+  - GIN `gin_trgm_ops` on `donations.donor_name` and `donors (email::text)`, for admin
+    search. The donor index is on the cast because citext has no `gin_trgm_ops`.
+    Forward note, spec 005: admin search must filter on `email::text ILIKE …`, or the
+    planner can't use it.
   - No extra index on `receipt_number`: its unique constraint already is one.
 - **Timestamps:** `timestamptz`, with `default now()`. The seed sets `created_at` and
   `updated_at` from the CSV.
@@ -95,13 +98,21 @@ builder plus `sql` fragments for `CHECK`s and extensions. The details that matte
 - **`pg` int8 parser, per pool, not global:**
   - The pool's `types.getTypeParser` returns, for OID 20 (`int8`), a parser that does
     `Number(value)` and throws unless `Number.isSafeInteger`.
+  - It does the same for OID 1016 (`int8[]`, e.g. `campaigns.preset_cents`), each element
+    through the same check. pg-types returns `bigint[]` elements as strings, so a column
+    typed `number[]` would silently arrive as `string[]` and a later `formatCents('1000')`
+    or sum would break. The schema has no arrays containing NULL, so the array parser may
+    reject them.
   - `numeric` (OID 1700) is deliberately left as a string. An uncast `SUM()` then surfaces
     as a type error in TypeScript and in a test, instead of silently becoming a float.
   - Per pool, rather than `pg.types.setTypeParser`, so nothing else in the process
     changes behaviour.
 - **`Database` types:** hand-written in `database.ts`, next to the migration. The drift
-  risk (000 §15) is covered because the integration tests run every query against the
-  migrated schema.
+  risk (000 §15) is covered only for queries that go through Kysely, run by the
+  integration tests against the migrated schema. T2 adds a typed round-trip test (insert
+  and select through `db` for campaigns, donors and donations, including `preset_cents`
+  as `number[]` and the nullable and `Generated` columns); the T5 seed tests cover the
+  rest.
 - **Migrator:**
   - Kysely's `Migrator` with a **static provider** (`{ '0001_initial': m0001 }`), not
     `FileMigrationProvider`. It is the same import graph under `tsx`, Vitest and compiled
@@ -194,12 +205,18 @@ locking is needed beyond the unique constraints.
 | `packages/shared/test/money.test.ts` | Unit | **M8 money:** the boundaries 0.99 / 1.00 / 25,000.00 / 25,000.01; negative, string, `null`, `1.5`, `"1e9"`, `"1,000.00"`, `" 51 "`, `"51.5"`; `formatCents(4305800)` = `$43,058.00` and `formatCents(100)` = `$1.00`; `progressPercent` with 0, partial and over-goal |
 | `apps/api/test/password.test.ts` | Unit | Hash then verify is true; a wrong password is false; two hashes of one password differ (salt); a malformed stored value is false, not a throw |
 | `apps/api/test/read-seed.test.ts` | Unit, on the real files | 3 campaigns and 75 rows. Row 1's name is byte for byte `Shrestha, Bijay "BJ"`. Row 2's Devanagari is in NFC. Amounts are integers and row 3 is 2,500,000. The same CSV with LF and with CRLF gives identical records. A row with `"12.345"` fails naming its receipt number |
-| `apps/api/test/db/migration.test.ts` | Integration (Testcontainers `postgres:16-alpine`) | Raw inserts are rejected: amount 99 and 2,500,001, a duplicate receipt, an unknown status, a non-import message of 281 code points, a non-import dedication type without a name, an unknown campaign, an email differing only in case. 280 emoji is accepted (code points, A12). `int8` comes back as a `number`; an unsafe one throws |
+| `apps/api/test/db/migration.test.ts` | Integration (Testcontainers `postgres:16-alpine`) | Raw inserts are rejected: amount 99 and 2,500,001, a duplicate receipt, an unknown status, a non-import message of 281 code points, a non-import dedication type without a name, an unknown campaign, an email differing only in case. 280 emoji is accepted (code points, A12). `int8` comes back as a `number`; an unsafe one throws. `int8[]` comes back as `number[]`; an unsafe element throws. A typed round-trip through `db` (campaigns, donors, donations: `preset_cents`, nullable and `Generated` columns) matches the `Database` types. `receipt_number_seq` exists, checked in `pg_sequences` without `nextval`, so T5 still sees 76 |
 | `apps/api/test/db/seed.test.ts` | Integration | Counts 75 / 66-7-2 / 48-15-12. Aangan `SUM(amount_cents)::bigint` = the number 4305800. Rows 11 and 12 belong to one donor. 3 accounts with roles and verifiable passwords; everyone else's hash is null. A second `runSeed` changes no row count and no hash. A donation inserted between runs survives. The next sequence value is 76 |
 
-Integration tests share **one** container per run: Vitest `globalSetup` starts it, migrates,
-and passes the URL with `provide`. Each test file truncates what it writes. A cold run adds
-the image pull plus about 3 s.
+Vitest runs two projects:
+
+- **`unit`** (`test/*.test.ts`): no Docker. `vitest run --project unit` runs it alone.
+- **`integration`** (`test/db/**`): owns the container. It shares **one** per run: its
+  `globalSetup` starts it, migrates, and passes the URL with `provide`.
+  - Each file truncates the tables it writes. It runs with `fileParallelism: false`:
+    TRUNCATE takes an ACCESS EXCLUSIVE lock, so parallel files on shared tables would wipe
+    each other's rows or deadlock.
+  - A cold run adds the image pull plus about 3 s.
 
 ## 10. Alternatives considered
 
@@ -220,9 +237,10 @@ the image pull plus about 3 s.
 
 | Risk | Mitigation |
 |---|---|
-| Testcontainers on Windows / Docker Desktop (Ryuk, named pipes) | Verify in T2 first. Fallback: `TESTCONTAINERS_RYUK_DISABLED=true` and an explicit stop in `globalTeardown`, noted |
-| `npm test` now needs Docker | `CLAUDE.md` already says so; the README says it in spec 006. Unit tests stay runnable alone (`vitest run test/*.test.ts`) |
+| Testcontainers on Windows / Docker Desktop (Ryuk, named pipes) | Resolved in T2: the container starts and stops cleanly on Windows with Ryuk enabled, in about 4 s warm. No fallback needed |
+| `npm test` now needs Docker | `CLAUDE.md` already says so; the README says it in spec 006. Unit tests stay runnable alone through the project split: `vitest run --project unit` (§9) |
+| The pool's `query_timeout: 5000` also applies to migrations, because `start.ts` reuses the pool. A slow migration (backfill, index build) or an instance waiting on the advisory lock could be aborted client-side | Not needed for 0001 on an empty database. T5 gives `start.ts` its own pool for migrate + seed with a longer `query_timeout`, or revisits the decision then |
 | scrypt N=2^17 is slow per hash (~0.3 s) | Only on the first seed (3 hashes). Tests use the same parameters, because a weaker test hash would test a different thing |
 | CRLF working copies on Windows | csv-parse auto-detects line endings; a test feeds both |
 | Shared's new runtime dependency (`zod`) missing from the API image | T6 checks `node -e "import('@aangan/shared')"` inside the built image |
-| Hand-written Kysely types drift from the migration | Every query is exercised by the integration tests against the migrated schema |
+| Hand-written Kysely types drift from the migration | Holds only for queries through Kysely: the T2 typed round-trip test, then the T5 seed tests, run them against the migrated schema (§4) |
