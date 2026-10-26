@@ -28,7 +28,7 @@ put the agent rules in place before the code they govern. Budget: about 1 h 15 i
     Under ~150 lines.
   - Commit: `docs: add the agent working rules in CLAUDE.md`
 
-- [ ] **T4 — Subagents**
+- [x] **T4 — Subagents**
   - Files: `.claude/agents/{spec-writer,test-writer,code-reviewer,qa-verifier}.md`
   - Done: each has one job, minimal tools (the reviewer and verifier have no Edit/Write),
     and a defined output format. Invoking `code-reviewer` on the T2 diff returns ranked
@@ -87,3 +87,8 @@ put the agent rules in place before the code they govern. Budget: about 1 h 15 i
 - T2 review: the `code-reviewer` subagent only exists from T4, whose Done runs it on this diff.
 - T3: 130 lines. The commands table marks which spec each command arrives in, so nothing
   is listed as a placeholder script. The rule text was checked line by line against the original.
+- T4: Claude Code registers agents only at session start, so the first review ran as a
+  general-purpose agent given `code-reviewer.md` verbatim. Its review of the T2 commit
+  (`6ab79d2`) returned 1 major and 6 minor findings, verdict "fix first". The major one,
+  confirmed by hand: the money rules do not reach Vue template expressions. That fix gets
+  its own commit after T4.
