@@ -1,0 +1,16 @@
+# The build context is the repo root. Dockerfiles copy only what each image needs; this
+# keeps the context small and makes sure nothing from the host leaks in.
+node_modules
+**/node_modules
+**/dist
+coverage
+playwright-report
+test-results
+.git
+# Any env file at any depth: Vite would bake an apps/web/.env.local into the bundle.
+**/.env*
+!.env.example
+docs
+roles/qa-engineer
+Hiring_Handbook.pdf
+.claude

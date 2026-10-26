@@ -66,7 +66,7 @@ put the agent rules in place before the code they govern. Budget: about 1 h 15 i
     the Vite proxy. `isApiErrorBody` is imported from shared.
   - Commit: `feat(web): add the Vue skeleton that reads API health`
 
-- [ ] **T9 — Docker compose stack**
+- [x] **T9 — Docker compose stack**
   - Files: `apps/api/Dockerfile`, `apps/web/{Dockerfile,nginx.conf}`, `docker-compose.yml`,
     `.dockerignore`, `.env.example`
   - Done: after `docker compose down -v && docker builder prune -f`,
@@ -219,3 +219,41 @@ put the agent rules in place before the code they govern. Budget: about 1 h 15 i
       asset arrives.
     - Spec 005: the Vite proxy doesn't rewrite `Origin`, so the `Origin` allow-list needs
       `http://localhost:5173` in dev.
+- T9, done. Tech spec §6 was updated before each change.
+  - **Cold-build time: 27 s**, measured as `docker builder prune -af` then
+    `up --build --wait`, all three containers healthy. Base images were already pulled; a
+    fresh machine adds their download.
+  - Without `.env`, compose fails at once: "required variable POSTGRES_DB is missing a
+    value: copy .env.example to .env".
+  - US-1 passes:
+    - `:4000/api/health` and `:3000/api/health` return 200 `{"status":"ok"}`.
+    - `:3000/` serves `<div id="app">` with CSP, `nosniff` and `Referrer-Policy`.
+    - Headless Edge renders "API: ok" through nginx.
+  - Non-root: the API runs as uid 1000 (`node`) and nginx as uid 101.
+  - Runtime image: `node_modules` is 18 MB with no build tooling, and the workspace
+    symlinks resolve. The API image is 265 MB, mostly the Node binary; the web image is
+    82 MB.
+  - SIGTERM (deferred from T7): `docker compose stop api` logs the signal and exits 0 in
+    0.5–0.6 s.
+  - Found while testing, fixed:
+    - nginx resolved `api` once at startup, so a recreated API container with a new IP
+      gave 502 forever, and a stopped API hung the page for 60 s.
+    - Now it resolves per request (Docker DNS) with a 5 s connect timeout. Measured: a
+      stopped API gives 502 in 4 s, and a new IP recovers at once.
+  - Review: verdict "ready to commit". 1 major (the §6 `.env.example` bullet still listed
+    `PORT` and `NODE_ENV`) and 8 minors, all fixed:
+    - `absolute_redirect off`, so `/api` → `/api/` no longer names port 8080.
+    - A missing `/assets/*` file is a 404, not `index.html`.
+    - `pg_isready -h 127.0.0.1`: the first-start init server listens on the socket only.
+    - `name:` dropped, so each clone gets its own volume.
+    - `**/.env*` added to `.dockerignore`.
+    - Comment corrections in compose, `.env.example` and the API Dockerfile.
+  - Declined: `--start-interval`, which would save about 10 s of startup but needs
+    Docker Engine 25 or newer.
+  - Also checked by the review: arm64. All base images publish it, the lockfile has the
+    musl-arm64 native packages, and an emulated arm64 web build succeeded.
+  - Forward notes:
+    - Spec 003: `trust proxy` must be `1`, not `true`. `:4000` is reachable directly, so
+      `X-Forwarded-For` could be spoofed.
+    - Spec 002: when shared gains a runtime dependency, check it is in the API image.
+    - Spec 006: the README states the cold-build time and both URLs.

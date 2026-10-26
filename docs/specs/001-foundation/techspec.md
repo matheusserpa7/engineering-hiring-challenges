@@ -147,9 +147,12 @@ Vite + Vue 3 + TS. `App.vue` renders the product name and an API status line fro
 - **`nginx.conf`**:
   - `location /api/` → `proxy_pass http://api:4000` (no trailing slash, so the path is
     forwarded unchanged).
-  - `location /` → `try_files $uri /index.html`.
+  - `location /` → `try_files $uri /index.html`, except `/assets/`, where a missing file is
+    a 404. Otherwise a stale page asking for an old hashed bundle gets HTML, and with
+    `nosniff` that is a silent blank page.
   - `/healthz` → 200.
-  - `server_tokens off`.
+  - `server_tokens off`, and `absolute_redirect off`: nginx's automatic `/api` → `/api/`
+    redirect would otherwise name the container's port 8080.
   - Security headers: a CSP of `default-src 'self'; object-src 'none'; base-uri 'none';
     frame-ancestors 'none'`, plus `X-Content-Type-Options`, `Referrer-Policy`.
 
@@ -159,18 +162,39 @@ Vite + Vue 3 + TS. `App.vue` renders the product name and an API status line fro
   reviewers' `curl` commands work the same on both. Docker's `HEALTHCHECK` uses
   `/api/health`.
 - **`docker-compose.yml`**:
-  - `db`: `postgres:16-alpine`, named volume `dbdata`, `pg_isready` healthcheck,
-    `127.0.0.1:${DB_PORT:-5433}:5432`.
-  - `api`: `depends_on: db: service_healthy`, `${API_PORT:-4000}:4000`, `DATABASE_URL`
-    composed from the `POSTGRES_*` vars pointing at `db:5432`.
-  - `web`: `depends_on: api: service_healthy`, `${WEB_PORT:-3000}:8080`.
+  - `db`: `postgres:16-alpine`, named volume `dbdata`, `127.0.0.1:${DB_PORT:-5433}:5432`.
+    Its healthcheck is `pg_isready -h 127.0.0.1`. The image's first-start init server
+    listens on the Unix socket only, so a socket check could pass just before that server
+    restarts.
+  - No `name:`. The project name comes from the folder, so each clone gets its own volume
+    and never reuses another project's `aangan_dbdata` with different credentials.
+  - `api`: `depends_on: db: service_healthy`, `127.0.0.1:${API_PORT:-4000}:4000`,
+    `DATABASE_URL` composed from the `POSTGRES_*` vars pointing at `db:5432`, and
+    `LOG_LEVEL: ${LOG_LEVEL:-info}`. `PORT` is not passed at all: the config schema's
+    default applies only to a missing variable, and compose would turn an unset one into
+    an empty string.
+  - `web`: `depends_on: api: service_healthy`, `127.0.0.1:${WEB_PORT:-3000}:8080`.
+  - Every published port binds to `127.0.0.1`, so a reviewer's machine doesn't expose the
+    stack to its network.
   - Required vars use `${VAR:?copy .env.example to .env}`.
+- **Build cache:** `npm ci` runs with a BuildKit cache mount on `/root/.npm`, so a rebuild
+  doesn't re-download packages. A cold build is still measured after `docker builder prune`.
+- **nginx headers:** the security headers sit in `location /` only. Proxied `/api/`
+  responses keep helmet's headers instead of getting a second CSP. nginx forwards `Host`,
+  `X-Forwarded-For` and `X-Forwarded-Proto`, which spec 003 needs for `trust proxy`.
+- **nginx resolves `api` per request:** Docker's DNS (`resolver 127.0.0.11`) and a variable
+  in `proxy_pass`. With a literal hostname, nginx resolves it once at startup. A recreated
+  API container that gets a new IP then breaks the site with 502s until nginx restarts;
+  this was measured in T9. `proxy_connect_timeout 5s`, because the 60 s default made a
+  stopped API look like a hung page.
 - **`.dockerignore`**: `node_modules`, `**/node_modules`, `.git`, `**/dist`, `coverage`,
-  `.env`, `playwright-report`, `test-results`, `roles/qa-engineer`, `docs`,
+  every `.env*` at any depth except `.env.example` (Vite would bake an `apps/web/.env.local`
+  into the bundle), `playwright-report`, `test-results`, `roles/qa-engineer`, `docs`,
   `Hiring_Handbook.pdf`, `.claude`.
-- **`.env.example`**: only the variables used so far (POSTGRES_*, `DATABASE_URL` for the
-  host dev path on `localhost:5433`, PORT, NODE_ENV, LOG_LEVEL, the host ports). Each later
-  spec adds its own, with a comment.
+- **`.env.example`**: only the variables used so far: `POSTGRES_*`, the host ports,
+  `LOG_LEVEL`, and the host dev path's `DATABASE_URL` on `localhost:${DB_PORT}`, with a note
+  that it must repeat `POSTGRES_*` and `DB_PORT`. No `PORT` and no `NODE_ENV`; see `api`
+  above and T7. Each later spec adds its own variables, with a comment.
 
 ## 7. CI (T10)
 
