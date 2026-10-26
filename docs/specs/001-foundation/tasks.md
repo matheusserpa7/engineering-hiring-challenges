@@ -41,8 +41,8 @@ put the agent rules in place before the code they govern. Budget: about 1 h 15 i
     (exit 2). A clean edit is silent. The run time is noted here.
   - Commit: `chore: lint and typecheck files after agent edits`
 
-- [ ] **T6 — Shared package with the error envelope**
-  - Files: `packages/shared/{package.json,tsconfig.json,src/index.ts,src/errors.ts,test/errors.test.ts,README.md}`
+- [x] **T6 — Shared package with the error envelope**
+  - Files: `packages/shared/{package.json,tsconfig.json,tsconfig.build.json,src/index.ts,src/errors.ts,test/errors.test.ts,README.md}`, root `package.json` scripts
   - Test first: `isApiErrorBody` accepts and rejects the cases in tech spec §8.
   - Done: `npm test -w packages/shared` is green, and `build` emits `dist/` with `.d.ts`.
   - Commit: `feat(shared): add the API error envelope type`
@@ -105,7 +105,7 @@ put the agent rules in place before the code they govern. Budget: about 1 h 15 i
     accepted: template-literal keys (`` x[`toFixed`] ``) and `v-slot` destructuring.
 - For T6–T8, from the same review (TypeScript 6 behaviour):
   - every workspace tsconfig must set `module` explicitly;
-  - the API and shared configs need `"types": ["node"]`, because `types` now defaults to `[]`;
+  - the API config needs `"types": ["node"]`, because `types` now defaults to `[]`;
   - each workspace tsconfig must include its own config files (`vitest.config.ts`,
     `vite.config.ts`), or lint can't find them through the project service.
 - T5: **~2.2 s per edit** (eslint on one file plus `tsc --noEmit` on a one-file package),
@@ -127,3 +127,27 @@ put the agent rules in place before the code they govern. Budget: about 1 h 15 i
     - A comment wrongly said the hook runs in CI. It doesn't, and the comment is fixed.
   - Re-test after the fixes: all seven pipe cases pass, plus the missing-dependencies case.
     A malformed stdin gives exit 1, which is non-blocking, so the hook fails open.
+- T6, recorded before the code:
+  - The package is `@aangan/shared`.
+  - It has two tsconfigs. `tsconfig.json` (src + test, `noEmit`) serves typecheck and lint.
+    `tsconfig.build.json` (src only) emits `dist/`, so tests never ship.
+  - Root `build`, `typecheck` and `test` scripts arrive here, with their first workspace.
+  - `ErrorCode` holds only the codes spec 001 uses: `malformed_json`, `not_found`,
+    `unavailable`, `internal_error`. Each later spec adds its own with its endpoint.
+  - Shared runs in the browser too, so it gets no `"types": ["node"]`. The TypeScript 6
+    note above was narrowed to the API.
+- T6, done: the test was red first (module not found) and is now green, 14 cases. The
+  build emits `dist/` with `.d.ts`.
+  - Review, major: `typecheck` and `lint` didn't build shared, and the apps resolve it
+    from `dist/`. A fresh clone and the CI `check` job would have failed from T7 on.
+    Fixed with an explicit `build:shared` chained before `typecheck`, `lint` and `test`
+    (tech spec §1 updated first). Verified starting from no `dist/`.
+  - Review, minors:
+    - The comment's reason for rejecting unknown codes was overstated. It now gives the
+      real reason, honest narrowing, and names its cost.
+    - Added a test with an `Object.prototype` key (`toString`) as the code, which pins
+      the `Set` lookup.
+    - Tech spec §3 and §4 were out of step with the code; corrected.
+    - Added `declarationMap`, so go-to-definition lands in `src`.
+  - Install gotcha: `npm` runs through `cmd.exe` here, where `^` is an escape character.
+    Don't put `^` ranges in npm arguments; npm writes the caret into `package.json` itself.

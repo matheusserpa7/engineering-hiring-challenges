@@ -11,9 +11,12 @@ Status: draft, awaiting approval · Implements [`prd.md`](prd.md) · Inherits
   has `engine-strict=true`.
 - Root scripts:
   `dev` (`concurrently` runs the shared `tsc -w`, the api `tsx watch` and `vite`) ·
-  `build` (`npm run build --workspaces --if-present`) · `test` (builds shared, then
-  `npm test --workspaces --if-present`) · `lint` (`eslint . --max-warnings 0`) ·
-  `format` / `format:check` (Prettier) · `typecheck` (`--workspaces`).
+  `build` (`npm run build --workspaces --if-present`) · `build:shared` · `test`,
+  `typecheck` and `lint` each run `build:shared` first, then their own command
+  (`--workspaces --if-present`, or `eslint . --max-warnings 0`) · `format` /
+  `format:check` (Prettier).
+  The apps resolve `@aangan/shared` from its `dist/`, so type-aware lint and typecheck
+  need it built. The chain makes a fresh clone and CI work in any order.
 - `tsconfig.base.json`: `strict`, `noUncheckedIndexedAccess`, `noImplicitOverride`,
   `verbatimModuleSyntax`, `isolatedModules`, target `ES2024`. API and shared use
   `module`/`moduleResolution: NodeNext`. Web uses `bundler`.
@@ -85,8 +88,8 @@ not part of the hook: they're too slow per edit, and CI and the task flow cover 
 ## 3. Shared package (T6)
 
 `packages/shared/src/errors.ts` holds the error envelope type `ApiErrorBody` and the
-`ErrorCode` union (`validation_failed | not_found | internal_error | …`, extended by later
-specs) plus an `isApiErrorBody` guard. The API's error middleware builds the envelope from
+`ErrorCode` union (`malformed_json | not_found | unavailable | internal_error`, extended by
+later specs) plus an `isApiErrorBody` guard. The API's error middleware builds the envelope from
 this type. The web client's `fetch` wrapper uses the guard to read it. That makes the
 shared package real from its first commit, before money exists (spec 002).
 
@@ -98,7 +101,7 @@ apps/api/src/
   logger.ts      pino; redacts req.headers.cookie and authorization
   app.ts         createApp(deps) — helmet, express.json({limit:'16kb'}), pino-http, routes,
                  notFound, errorHandler. deps = { pingDb } so tests inject failures
-  http/health.ts GET /api/health → pingDb() ? 200 {status:'ok'} : 503 {error:{code:'unavailable'}}
+  http/health.ts GET /api/health → pingDb() ? 200 {status:'ok'} : 503 {error:{code:'unavailable',message}}
   http/errors.ts AppError(status, code, message); errorHandler: AppError → its envelope;
                  malformed JSON → 400 malformed_json; anything else → log + 500 internal_error
   db/pool.ts     pg Pool from DATABASE_URL (Kysely arrives in 002)
