@@ -21,7 +21,7 @@ put the agent rules in place before the code they govern. Budget: about 1 h 15 i
     using `parseFloat`, `.toFixed()` or `v-html` fails lint (checked manually, then deleted).
   - Commit: `chore: configure strict TypeScript, ESLint and Prettier`
 
-- [ ] **T3 — CLAUDE.md**
+- [x] **T3 — CLAUDE.md**
   - Files: `CLAUDE.md`
   - Done: it contains the mandatory spec rule verbatim, the user-commits rule, commands,
     conventions, the money rule, the security checklist and "no feature without a test".
@@ -85,3 +85,5 @@ put the agent rules in place before the code they govern. Budget: about 1 h 15 i
 - T2: guard check passed: a scratch `.ts` and `.vue` failed on `no-restricted-globals`,
   `no-restricted-properties`, `no-restricted-syntax` (toFixed) and `vue/no-v-html`. Deleted.
 - T2 review: the `code-reviewer` subagent only exists from T4, whose Done runs it on this diff.
+- T3: 130 lines. The commands table marks which spec each command arrives in, so nothing
+  is listed as a placeholder script. The rule text was checked line by line against the original.
