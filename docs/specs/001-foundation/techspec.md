@@ -199,7 +199,9 @@ Vite + Vue 3 + TS. `App.vue` renders the product name and an API status line fro
 ## 7. CI (T10)
 
 `.github/workflows/ci.yml`, triggered on push and pull_request, with
-`permissions: contents: read` and concurrency cancel-in-progress.
+`permissions: contents: read` and concurrency cancel-in-progress. Actions are pinned to a
+commit SHA with the version in a comment: a tag can be moved, a SHA cannot. Node comes
+from `.nvmrc`, so CI and local runs share one version source.
 - `check`: checkout, setup-node 24 with npm cache, `npm ci`, `format:check`, `lint`,
   `typecheck`, `test`, `build`.
 - `stack`: `cp .env.example .env`, `docker compose up --build --wait --wait-timeout 300`,
