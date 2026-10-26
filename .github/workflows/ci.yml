@@ -43,6 +43,26 @@ jobs:
           curl -fsS http://localhost:4000/api/health | grep -q '"status":"ok"'
           curl -fsS http://localhost:3000/api/health | grep -q '"status":"ok"'
           curl -fsS http://localhost:3000/ | grep -q '<div id="app">'
+      # The two numbers from the seed README: 75 rows, and 4,305,800 cents of completed gifts
+      # for the Aangan campaign. The psql runs inside the db container, so it uses the same
+      # credentials the stack was started with. A restart seeds again and must change neither:
+      # the second check is on the money, not only the row count.
+      - name: Seed data survives a restart
+        run: |
+          psql_db() {
+            docker compose exec -T db sh -c 'psql -U "$POSTGRES_USER" -d "$POSTGRES_DB" -tAc "$1"' _ "$1"
+          }
+          check_seed() {
+            test "$(psql_db 'select count(*) from donations')" = 75
+            test "$(psql_db "select sum(d.amount_cents)::bigint from donations d join campaigns c on c.id = d.campaign_id where c.slug = 'aangan-courtyard' and d.status = 'completed'")" = 4305800
+          }
+          check_seed
+          docker compose restart api
+          docker compose up --wait --wait-timeout 120
+          check_seed
+      # Shared's runtime dependency (zod) has to be in the image, not only in the workspace.
+      - name: Shared package loads in the image
+        run: docker compose exec -T api node -e "import('@aangan/shared')"
       - name: Logs on failure
         if: failure()
         run: docker compose logs

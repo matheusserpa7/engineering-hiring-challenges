@@ -8,14 +8,15 @@ Last updated: 2026-10-26
 
 ## Resume here
 
-**Spec 002, task T2: Kysely, the int8 parser and the first migration.**
+**Spec 002 is implemented (6 / 6). Close it, then start spec 003.**
 
 1. Read [`CLAUDE.md`](../CLAUDE.md), then this file.
-2. Read spec 002 ([PRD](specs/002-data-and-money/prd.md),
-   [tech spec](specs/002-data-and-money/techspec.md),
-   [tasks](specs/002-data-and-money/tasks.md)). It is approved, and T1 is done in `5244ca5`.
-3. Start T2 by confirming Testcontainers works with Docker Desktop on this Windows
-   machine (tech spec §11, first risk), before writing the migration tests on top of it.
+2. Close spec 002: run the `qa-verifier` agent (clean compose run plus the matching part of
+   `CHECKLIST.md`), then push so CI checks the seeded stack, and record the green run here.
+   Push only when the user asks.
+3. Spec 003 (public campaign page and donation list) is not written. Start it with the
+   `spec-writer` agent: PRD, tech spec and tasks, then stop for the user's ok. Read the
+   forward notes below first.
 4. Follow the per-task flow in `CLAUDE.md`. Commit only when the user says so.
 
 ## Phases
@@ -25,7 +26,7 @@ Last updated: 2026-10-26
 | 0 — Understanding | Read the brief, rubric, checklist and docs 00–11; verify the seed data; list ambiguities | Done |
 | 1 — Overview | [PRD](specs/000-overview/prd.md), [Tech Spec](specs/000-overview/techspec.md), [Tasks](specs/000-overview/tasks.md), [ADRs 0001–0005](adr/) | Done · `02b074f` |
 | 2 — Foundation | [Spec 001](specs/001-foundation/): workspaces, tooling, CLAUDE.md, subagents, hook, Docker stack, CI | Done · CI green: [run 40324681629](https://github.com/matheusserpa7/engineering-hiring-challenges/actions/runs/40324681629) |
-| 3 — Features | Specs 002–005 (must-haves), then the status report | **In progress: spec 002, 1 of 6 tasks** |
+| 3 — Features | Specs 002–005 (must-haves), then the status report | **In progress: spec 002 done (6 of 6), specs 003–005 to go** |
 | 4 — Submission | Spec 006: hardening, e2e, READMEs, AI-USAGE.md, clean-clone rehearsal, video | Not started |
 
 ## Specs
@@ -34,7 +35,7 @@ Last updated: 2026-10-26
 |---|---|---|
 | 000-overview | Approved, committed | — |
 | 001-foundation | Done, pushed, CI green | 10 / 10 |
-| 002-data-and-money | Approved (`e6dba0e`), executing | **1 / 6** (T1 `5244ca5`) |
+| 002-data-and-money | Approved (`e6dba0e`), implemented, not yet closed by QA or CI | **6 / 6** (T1 `5244ca5` · T2 `27f850e` · T3 `b9cfb7b` · T4 `621646b` · T5 `a50f445` · T6 in the next commit) |
 | 003-public-campaign | Not written | — |
 | 004-donation-intake | Not written | — |
 | 005-auth-admin-refunds | Not written | — |
@@ -47,21 +48,36 @@ Last updated: 2026-10-26
 - **These commits are local and not yet pushed:**
 
   ```
-  5244ca5  feat(shared): add exact dollar parsing and cent formatting   spec-002/T1
+  a50f445  feat(api): seed the campaign data on start                  spec-002/T5
+  621646b  feat(api): parse the seed files into validated records      spec-002/T4
+  b9cfb7b  feat(api): hash passwords with scrypt                       spec-002/T3
+  27f850e  feat(api): add the initial schema migration                 spec-002/T2
+  cc24a59  chore: pin a model and effort per agent stage               spec-009
+  97d3ad5  docs: make the resume point explicit for any agent
+  5244ca5  feat(shared): add exact dollar parsing and cent formatting  spec-002/T1
   e6dba0e  docs: add spec 002 for data and money                       spec-002
   f861d69  docs: close spec 001 and update the progress log            spec-001/T10
   ```
 
-  Push only when the user asks. The plan is to push after spec 002 T6, so CI checks the
-  seeded stack.
+  The T6 commit follows them. Push only when the user asks. The plan is to push after
+  spec 002 T6, so CI checks the seeded stack.
+  (The `cc24a59` commit carries `Refs: spec-009/T1`, but spec 009 is a mini-spec with no
+  tasks file: it should read `Refs: spec-009`. Unpushed, so it can still be amended.)
 
 ## What exists now
 
-- `npm ci && npm test` runs 78 tests (shared 60, API 13, web 5). `lint`, `typecheck` and
-  `test` build the shared package first.
-- `cp .env.example .env && docker compose up --build --wait` brings up db, api and web,
-  all healthy, in about 30 s from a cold build cache. The API is on `:4000`, the site on
-  `:3000`. There's no schema or data yet; that's spec 002.
+- `npm ci && npm test` runs 225 tests (shared 60, API 160, web 5). The API's integration tests
+  run against a real Postgres through Testcontainers, so they need Docker. `lint`,
+  `typecheck` and `test` build the shared package first.
+  - Without Docker: `npx vitest run --project unit`, from `apps/api`.
+- `cp .env.example .env && docker compose up --build --wait` brings up db, api and web, all
+  healthy, in about 17 s with a warm npm cache (the same build with `--no-cache` took 10 s on
+  top, because the npm download cache survives it; the first CI run is the honest cold
+  number). The API migrates and seeds on start: 75 donations, 72 donors, the three demo
+  accounts (see `apps/api/README.md`), and Aangan at 4,305,800 cents. A restart changes
+  nothing. The API is on `:4000`, the site on `:3000`.
+- `npm run db:migrate` and `npm run db:seed` (from the root) run the same steps by hand
+  against `DATABASE_URL`; `db:seed` migrates first, and both are safe to run again.
 - `npm run dev` runs shared's watcher, the API (`tsx watch`) and Vite on `:5173`. It needs
   the compose `db`, or any Postgres, at the `DATABASE_URL` in `.env`.
 - `packages/shared` holds the error envelope and the money helpers.
@@ -76,12 +92,27 @@ Last updated: 2026-10-26
 
 From [spec 001's task notes](specs/001-foundation/tasks.md):
 
-- 002: test the undecodable URL parameter case once a route has a parameter; check shared's
-  runtime dependency (`zod`) is in the API image (planned in T6).
+- 002 (done in T6): shared's runtime dependency is in the API image;
+  `import('@aangan/shared')` works there. Still open: test the undecodable URL parameter
+  case once a route has a parameter (spec 003).
 - 003: `trust proxy` set to `1`, not `true`.
 - 003, first asset: Vite inlines small assets as `data:` URLs, which the CSP blocks.
 - 004: keep the `?q=` search out of the access log.
 - 005: helmet CSP `default-src 'none'`; the `Origin` allow-list includes `:5173` in dev.
+
+From [spec 002's task notes](specs/002-data-and-money/tasks.md):
+
+- 003: the pool parses `int8` and `int8[]` into safe numbers; `numeric` stays a string, so
+  an uncast `SUM()` fails loudly. Cast every aggregate `::bigint`.
+- 004: the receipt sequence continues from 76 (`receipt_number_seq`). The pool's `pg`
+  errors carry the failing row in `detail`; the logger's `err` serializer drops it, so log
+  with `{ err }` and never build a message from `error.detail`.
+- 005: admin search must filter `email::text ILIKE …` to use the trigram index.
+- 005: apply the login rate limit before the hash. Node's thread pool runs 4 scrypt hashes
+  at once (~128 MiB each, ~17 logins/s measured), so give the container at least 1 GiB or
+  add a small semaphore; add the dummy-hash comparison for unknown emails.
+- 005: `verifyPassword` returns false for any derive failure, so a host short of memory would
+  make every login read as a wrong password. Watch the login failure rate.
 
 ## Open items that aren't code
 
@@ -109,7 +140,13 @@ From [spec 001's task notes](specs/001-foundation/tasks.md):
 - Windows PowerShell 5.1 adds a BOM when piping text to a program. Test the hook, or
   anything that reads stdin, from Git Bash.
 - To commit a multi-line message from PowerShell, put it in a here-string variable and run
-  `git commit -m $msg`. `git commit -F -` doesn't work with PowerShell pipes.
+  `git commit -m $msg`. `git commit -F -` doesn't work with PowerShell pipes. From Git Bash,
+  `git commit -F - <<'EOF'` works.
+- Testcontainers works with Docker Desktop here: Ryuk on, no workaround, about 4 s for the
+  container once the image is pulled.
+- Backslashes in inline `node -e` or heredoc snippets run through Git Bash get collapsed
+  (`\d` arrives as `d`). Put a patch script in a file, build a backslash with
+  `String.fromCharCode(92)`, or use the Edit tool.
 
 ## How to resume on a fresh machine
 

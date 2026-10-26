@@ -52,7 +52,7 @@ fix → tick here → diff summary, decisions and commit message → Matheus say
       fails.
   - Commit: `feat(api): seed the campaign data on start`
 
-- [ ] **T6 — Seed data in Docker and CI**
+- [x] **T6 — Seed data in Docker and CI**
   - Files: `apps/api/Dockerfile`, `.github/workflows/ci.yml`, `docs/PROGRESS.md`
   - Done:
     - From a pruned cache, `up --build --wait` exits 0.
@@ -217,3 +217,29 @@ T1 comes first: T4 parses dollars with it. T2 comes before T5 (schema) and T3 be
       - a `donors` row that already holds a fixture email (e.g. a guest `donor@` with a
         null hash) never gets a password, because the seed never updates (B4, §5);
       - the image has no seed folder until T6, so the container exits 1 naming `seed`.
+- T6, done. Test-first (infra): red was `docker compose up --build --wait` with the old
+  Dockerfile. The api migrated, then exited 1 at the seed step looking for
+  `/app/roles/full-stack-engineer/seed/campaigns.json`, which also confirmed that
+  `SEED_DIR` resolves under `/app` in the image.
+  - Fix: one `COPY` of the unmodified seed folder into the runtime image at the same
+    repo-relative path, after the `dist` copies so a seed edit invalidates one layer.
+  - Verified: stack healthy; `psql` shows 75 donations, 72 donors and Aangan at 4,305,800
+    cents; `docker compose restart api` keeps 75 rows and the sequence at 75 (next receipt
+    76); `import('@aangan/shared')` works in the image (8 exports), so shared's `zod`
+    dependency is present.
+  - CI `stack` job: asserts 75 and 4,305,800 via `psql` inside the db container, restarts
+    the api, asserts both again, then checks the shared import. The new shell steps were
+    extracted from the YAML and run locally, with negative controls (expecting 74, then
+    4305801) that fail as they should.
+  - Review: no blockers or majors. Minors applied: re-check money after the restart (the
+    first version re-checked only the row count, which would miss a re-seed that corrupts
+    money), one `psql` helper function, the shared-import step.
+  - Cold-build time: `docker compose build --no-cache` took 10 s and `up --wait` 17 s more
+    on this machine. Not truly cold: the npm download cache mount and the pulled base
+    images survive `--no-cache`, and a global `docker builder prune` was skipped on
+    purpose (it would wipe the cache of the user's other projects). The first CI run is
+    the honest cold number; record it in `docs/PROGRESS.md` when it exists.
+  - `docs/PROGRESS.md` rewritten for the new position: spec 002 6/6, unpushed commits,
+    forward notes for specs 003–005.
+  - Still open: "both CI jobs green after the push". The commits are not pushed yet (push
+    only on the user's request).

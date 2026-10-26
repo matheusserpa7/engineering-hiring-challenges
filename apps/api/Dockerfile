@@ -36,6 +36,9 @@ COPY --from=build /app/packages/shared/package.json packages/shared/
 COPY --from=build /app/packages/shared/dist packages/shared/dist
 COPY --from=build /app/apps/api/package.json apps/api/
 COPY --from=build /app/apps/api/dist apps/api/dist
+# The seed files, unmodified, at the repo-relative path config.ts resolves SEED_DIR to. The API
+# reads them on every start, so an image without them exits 1 at the seed step.
+COPY roles/full-stack-engineer/seed roles/full-stack-engineer/seed
 
 USER node
 WORKDIR /app/apps/api
