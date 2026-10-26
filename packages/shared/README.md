@@ -15,7 +15,22 @@ Today it holds the error envelope:
   rejects unknown codes, because it promises `code: ErrorCode`. A client on an older bundle
   therefore shows a generic error for a code it doesn't know yet.
 
-Money helpers and the Zod schemas arrive in spec 002.
+And the money helpers (`src/money.ts`, ADR 0002). Money is integer cents everywhere:
+
+- `AmountCentsSchema`: a donation amount, 100 to 2,500,000 cents (`MIN_DONATION_CENTS`,
+  `MAX_DONATION_CENTS`). Rejects fractions, strings, `null` and `NaN`.
+- `parseDollarsToCents(input)`: `"51"`, `"51.5"` or `"51.05"` to cents, using a regex and
+  integer maths, never `parseFloat`. Trims whitespace. Returns `null` for anything else,
+  including `"1,000.00"` (commas are locale-ambiguous), signs and exponents. Range is the
+  schema's job.
+- `formatCents(cents, locale?)`: `4305800` → `$43,058.00`, always in USD. The decimal
+  string is built by slicing digits and formatted by `Intl.NumberFormat`, so no float is
+  involved. There is no currency parameter, because cents assume two decimal places.
+- `progressPercent(raised, goal)`: a whole percentage, rounded down. For integer inputs it
+  is 0 when nothing is raised or the goal isn't positive, and never `NaN`. Not capped at
+  100.
+
+Endpoint DTOs and request schemas arrive with their endpoints (specs 003–005).
 
 Both apps import the **built** output (`dist/`, ESM plus `.d.ts`), the same way in dev,
 tests and Docker.

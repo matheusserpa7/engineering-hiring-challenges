@@ -37,10 +37,14 @@ Libraries added: `kysely` (ADR 0001), `csv-parse`, `zod` in shared, and
     isn't a string. Commas are rejected rather than guessed, because `1,000` means one
     thousand in en-US but one in many other locales.
   - Range is the schema's job, not the parser's.
-- `formatCents(cents, locale = 'en-US', currency = 'USD')`:
-  - It builds the exact decimal string (`"43058.00"`) with integer division and remainder.
+- `formatCents(cents, locale = 'en-US')`, always in USD:
+  - It builds the exact decimal string (`"43058.00"`) by slicing the digits, with no
+    division.
   - It passes that string to `Intl.NumberFormat`, which formats numeric strings exactly
     (ES2023). Not even the display path divides by 100.
+  - There's no `currency` parameter: cents assume two decimal places, and JPY or BHD would
+    silently misformat. Every campaign is USD; a second currency would bring its own
+    minor-unit rule.
 - `progressPercent(raisedCents, goalCents)`:
   - `Math.floor((raised * 100) / goal)`, an integer. It returns 0 when the goal is not
     positive, so the result is never `NaN`.

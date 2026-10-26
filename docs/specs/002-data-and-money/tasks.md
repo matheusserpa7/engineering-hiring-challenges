@@ -4,7 +4,7 @@ Flow per task: test first → implementation → run checks → `code-reviewer` 
 fix → tick here → diff summary, decisions and commit message → Matheus says go → commit.
 `Refs: spec-002/Tn` goes in the commit body. The order is strict. Budget: about 1 h 15.
 
-- [ ] **T1 — Shared money helpers**
+- [x] **T1 — Shared money helpers**
   - Files: `packages/shared/{src/money.ts,src/index.ts,test/money.test.ts,package.json,README.md}`
   - Test first: `money.test.ts` (tech spec §9, row 1). These are the M8 money boundary
     tests.
@@ -68,4 +68,23 @@ T1 comes first: T4 parses dollars with it. T2 comes before T5 (schema) and T3 be
 
 ## Notes recorded during execution
 
-- (filled in as tasks close)
+- T1, done. Test-first: red because the module was missing; now 46 money tests, 60 in
+  shared.
+  - Review: no blockers. The money path is exact; the reviewer compared it against string
+    arithmetic over the whole 7-digit range and against BigInt on 200,000 random cases.
+  - Major, fixed: the "keeps every cent" test passed even with `cents / 100`. It now uses
+    `Number.MAX_SAFE_INTEGER`, where the float version prints `.90` instead of `.91`.
+    Checked side by side.
+  - Major, fixed: tech spec §2 said "integer division", but the code slices digits.
+    Spec updated first.
+  - Minors, fixed:
+    - `formatCents` lost its `currency` parameter and is always USD. With JPY it would
+      silently round away cents. Spec updated first.
+    - A test for the negative sign.
+    - An accurate comment on what `.int()` adds.
+    - The README's "never `NaN`" is now qualified as holding for integer inputs.
+    - The package description.
+  - Confirmed by the review:
+    - `\d` matches ASCII digits only, so Devanagari or full-width digits are rejected.
+    - `trim()` removes non-breaking spaces.
+    - The regex can't backtrack catastrophically: a 1 MB input takes under 1 ms.

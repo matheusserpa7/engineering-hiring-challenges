@@ -3,7 +3,7 @@
   "version": "0.0.0",
   "private": true,
   "type": "module",
-  "description": "The contract between the API and the web app: error envelope, and later money and schemas",
+  "description": "The contract between the API and the web app: the error envelope and the money helpers",
   "exports": {
     ".": {
       "types": "./dist/index.d.ts",
@@ -18,5 +18,8 @@
   },
   "devDependencies": {
     "vitest": "^5.0.5"
+  },
+  "dependencies": {
+    "zod": "^4.6.7"
   }
 }
