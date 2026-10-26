@@ -7,28 +7,35 @@ import tseslint from 'typescript-eslint';
 
 // Money is integer minor units end to end (ADR 0002). Float parsing and float
 // formatting are the usual ways a rounding bug sneaks in, so lint bans them.
+const parseMessage = 'Money is integer minor units: parse with the shared money helpers.';
+const formatMessage = 'toFixed rounds floats: format money with the shared money helpers.';
+
 const moneyRules = {
   'no-restricted-globals': [
     'error',
     {
-      name: 'parseFloat',
-      message: 'Money is integer minor units: parse with the shared money helpers.',
+      globals: [{ name: 'parseFloat', message: parseMessage }],
+      // Also catches globalThis.parseFloat.
+      checkGlobalObject: true,
     },
   ],
   'no-restricted-properties': [
     'error',
-    {
-      object: 'Number',
-      property: 'parseFloat',
-      message: 'Money is integer minor units: parse with the shared money helpers.',
-    },
+    { object: 'Number', property: 'parseFloat', message: parseMessage },
+    // No object given, so any receiver matches: x.toFixed, x['toFixed'], destructuring.
+    { property: 'toFixed', message: formatMessage },
   ],
-  'no-restricted-syntax': [
+};
+
+// Core rules never see Vue template expressions, which is exactly where a price would
+// be formatted, so the same bans are repeated for templates.
+const templateMoneyRules = {
+  'vue/no-restricted-syntax': [
     'error',
-    {
-      selector: "CallExpression[callee.property.name='toFixed']",
-      message: 'toFixed rounds floats: format money with the shared money helpers.',
-    },
+    { selector: "Identifier[name='parseFloat']", message: parseMessage },
+    { selector: "MemberExpression[property.value='parseFloat']", message: parseMessage },
+    { selector: "MemberExpression[property.name='toFixed']", message: formatMessage },
+    { selector: "MemberExpression[property.value='toFixed']", message: formatMessage },
   ],
 };
 
@@ -38,8 +45,8 @@ export default defineConfig(
       'roles/**',
       '**/dist/**',
       '**/coverage/**',
-      'playwright-report/**',
-      'test-results/**',
+      '**/playwright-report/**',
+      '**/test-results/**',
     ],
   },
 
@@ -62,7 +69,14 @@ export default defineConfig(
   {
     files: ['**/*.vue'],
     languageOptions: { parserOptions: { parser: tseslint.parser } },
-    rules: { 'vue/no-v-html': 'error' },
+    rules: {
+      ...templateMoneyRules,
+      'vue/no-v-html': 'error',
+      // TypeScript already reports undefined names, and this rule has no browser globals here.
+      // That holds only if every script block is TypeScript, so block-lang enforces it.
+      'no-undef': 'off',
+      'vue/block-lang': ['error', { script: { lang: 'ts' } }],
+    },
   },
   {
     // Plain JS here is config and tooling scripts, which have no tsconfig to type-check against.

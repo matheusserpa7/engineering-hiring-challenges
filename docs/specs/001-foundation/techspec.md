@@ -24,14 +24,21 @@ Status: draft, awaiting approval · Implements [`prd.md`](prd.md) · Inherits
   - `@eslint/js` recommended, typescript-eslint `strictTypeChecked` (project service), and
     `eslint-plugin-vue` `flat/recommended` with the TS parser for `<script lang="ts">`.
   - `eslint-config-prettier` last.
-  - Project rules: `no-restricted-globals: parseFloat`; `no-restricted-properties:
-    Number.parseFloat`; `no-restricted-syntax` on `CallExpression[callee.property.name=
-    'toFixed']` (money); `vue/no-v-html: error` (XSS); `no-console: error`, except in
-    `scripts/` and `.claude/hooks/`.
-  - Ignores: `roles/**`, `**/dist`, `coverage`, `playwright-report`.
-- Prettier runs only on code and config (`ts, vue, js, mjs, json, yml, css`).
-  `.prettierignore` excludes `roles/`, the company's docs and `package-lock.json`. Markdown
-  is not reformatted, to avoid table churn.
+  - Project rules (money): `no-restricted-globals: parseFloat` with `checkGlobalObject`
+    (also catches `globalThis.parseFloat`); `no-restricted-properties` on
+    `Number.parseFloat` and on any `.toFixed` (dot, bracket or destructuring). Vue
+    templates are not seen by core rules, so `.vue` files add `vue/no-restricted-syntax`
+    with the same bans for template expressions.
+  - Other rules: `vue/no-v-html: error` (XSS); `no-console: error`, except in `scripts/`
+    and `.claude/hooks/`; `no-undef` off for `.vue` (TypeScript checks it, and the rule
+    doesn't know browser globals there), which `vue/block-lang` makes safe by requiring
+    `lang="ts"` on every script block.
+  - Plain JS (`js, mjs`) skips type-checked rules and gets Node globals. Every package is
+    ESM, so there is no `.cjs` support to maintain.
+  - Ignores: `roles/**`, `**/dist`, `**/coverage`, `**/playwright-report`, `**/test-results`.
+- Prettier runs as `prettier .` on code and config (including `.html` and `.yaml`).
+  `.prettierignore` excludes `roles/`, all Markdown and `package-lock.json`. Markdown is not
+  reformatted, to avoid table churn.
 - `.gitattributes`: `* text=auto eol=lf`, plus `*.pdf binary`. `.gitignore` additionally
   ignores `.claude/settings.local.json`.
 

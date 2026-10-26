@@ -80,7 +80,8 @@ put the agent rules in place before the code they govern. Budget: about 1 h 15 i
 - T2: root scripts are only `lint`, `format`, `format:check` for now. `typecheck`, `build`,
   `test` and `dev` arrive with the workspaces they run (T6–T8), not as placeholders.
 - T2: Prettier runs as `prettier .` and `.prettierignore` excludes `*.md`, `roles/` and the
-  lockfile. Same outcome as an extension list, with one source of truth.
+  lockfile. One source of truth instead of an extension list. It also formats `.html` and
+  `.yaml`, which is wanted.
 - T2: `defineConfig` from `eslint/config` instead of the deprecated `tseslint.config()`.
 - T2: guard check passed: a scratch `.ts` and `.vue` failed on `no-restricted-globals`,
   `no-restricted-properties`, `no-restricted-syntax` (toFixed) and `vue/no-v-html`. Deleted.
@@ -92,3 +93,18 @@ put the agent rules in place before the code they govern. Budget: about 1 h 15 i
   (`6ab79d2`) returned 1 major and 6 minor findings, verdict "fix first". The major one,
   confirmed by hand: the money rules do not reach Vue template expressions. That fix gets
   its own commit after T4.
+- T2 fix, after T4 (tech spec §1 updated first): `vue/no-restricted-syntax` adds the money
+  bans for templates. `checkGlobalObject` and an any-receiver `toFixed` property ban close
+  the script bypasses. `no-undef` is off for `.vue`, and the Playwright ignores match at any
+  depth. `.cjs` support was tried and dropped, because every package is ESM.
+  - A second review found that template bracket access (`x['toFixed']`) still passed, so
+    `property.value` selectors were added. `vue/block-lang` now requires `lang="ts"`,
+    because `no-undef: off` relies on TypeScript checking every script block.
+  - Final guard check: 6 script cases and 5 template cases fail lint (dot and bracket
+    forms), and so does a `.vue` file without `lang="ts"`. Not caught in templates, and
+    accepted: template-literal keys (`` x[`toFixed`] ``) and `v-slot` destructuring.
+- For T6–T8, from the same review (TypeScript 6 behaviour):
+  - every workspace tsconfig must set `module` explicitly;
+  - the API and shared configs need `"types": ["node"]`, because `types` now defaults to `[]`;
+  - each workspace tsconfig must include its own config files (`vitest.config.ts`,
+    `vite.config.ts`), or lint can't find them through the project service.
