@@ -35,7 +35,7 @@ put the agent rules in place before the code they govern. Budget: about 1 h 15 i
     findings.
   - Commit: `chore: add spec, test, review and QA subagents`
 
-- [ ] **T5 — Post-edit lint/typecheck hook**
+- [x] **T5 — Post-edit lint/typecheck hook**
   - Files: `.claude/settings.json`, `.claude/hooks/check-edited-file.mjs`
   - Done: introducing a type error in a `.ts` file makes the hook report it to the agent
     (exit 2). A clean edit is silent. The run time is noted here.
@@ -108,3 +108,22 @@ put the agent rules in place before the code they govern. Budget: about 1 h 15 i
   - the API and shared configs need `"types": ["node"]`, because `types` now defaults to `[]`;
   - each workspace tsconfig must include its own config files (`vitest.config.ts`,
     `vite.config.ts`), or lint can't find them through the project service.
+- T5: **~2.2 s per edit** (eslint on one file plus `tsc --noEmit` on a one-file package),
+  well under the 10 s threshold in the risk table. Re-measure once `apps/api` is real.
+  - Spec tweak (tech spec §2 updated first): the hook runs `npm run typecheck` in the
+    nearest folder with a `package.json`, instead of `-w <name>`.
+  - Verified with a scratch package, since deleted. The pipe test passed for clean,
+    type-error, lint-error, skipped and relative-path inputs. A live Edit introducing a type
+    error got `TS2322` back from the hook, and the fixing edit was silent.
+  - Testing gotcha: PowerShell 5.1 adds a BOM when piping to a program. Test the hook
+    from Git Bash, which is how Claude Code runs it.
+  - Review: no blockers or majors, 5 minors, all fixed.
+    - The search for a `package.json` stops at the repo root. Before, a file written
+      ahead of its `package.json` could trigger the root typecheck, or loop forever.
+    - The path is resolved once and used everywhere, so a relative path is checked
+      even when sent from another working directory.
+    - With no `node_modules`, the hook says "run `npm ci`" instead of printing a stack trace.
+    - Files under `node_modules/` and `dist/` are skipped.
+    - A comment wrongly said the hook runs in CI. It doesn't, and the comment is fixed.
+  - Re-test after the fixes: all seven pipe cases pass, plus the missing-dependencies case.
+    A malformed stdin gives exit 1, which is non-blocking, so the hook fails open.

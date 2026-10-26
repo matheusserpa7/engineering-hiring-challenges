@@ -1,0 +1,17 @@
+{
+  "hooks": {
+    "PostToolUse": [
+      {
+        "matcher": "Edit|Write",
+        "hooks": [
+          {
+            "type": "command",
+            "command": "node \"$CLAUDE_PROJECT_DIR/.claude/hooks/check-edited-file.mjs\"",
+            "timeout": 60,
+            "statusMessage": "Linting and typechecking the edited file"
+          }
+        ]
+      }
+    ]
+  }
+}

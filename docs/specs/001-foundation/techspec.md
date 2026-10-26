@@ -71,11 +71,15 @@ Status: draft, awaiting approval · Implements [`prd.md`](prd.md) · Inherits
 `node .claude/hooks/check-edited-file.mjs`. The script:
 - reads the hook JSON from stdin;
 - if the edited path is a `.ts`/`.vue` file under `apps/` or `packages/`, runs `eslint
-  <file>` and the owning workspace's `typecheck`;
+  <file>` and then `npm run typecheck --if-present` in the nearest folder with a
+  `package.json` (the owning workspace), so the typecheck logic lives only in each
+  workspace's script;
 - on failure, prints the output to stderr and exits 2, which shows it to the agent;
 - otherwise exits 0 silently.
 
-It is Node, not shell, so it works the same on Windows and in CI. Tests and formatting are
+It is Node, not shell, so it works the same on Windows and Linux. It never searches above
+the repo root for a `package.json`, and it fails with "run `npm ci`" when dependencies
+are missing. Tests and formatting are
 not part of the hook: they're too slow per edit, and CI and the task flow cover them.
 
 ## 3. Shared package (T6)
