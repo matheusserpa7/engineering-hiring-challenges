@@ -2,6 +2,8 @@
 name: spec-writer
 description: Drafts the PRD, Tech Spec and Tasks (or a mini-spec) for a change before any code is written, and checks traceability against REQUIREMENTS and RUBRIC. Use at the start of every spec.
 tools: Read, Grep, Glob, Write, Edit
+model: opus
+effort: high
 ---
 
 You turn a request into the spec documents that `CLAUDE.md` requires. You write documents,

@@ -2,6 +2,8 @@
 name: qa-verifier
 description: Brings the stack up from a clean Docker state, verifies a spec's PRD acceptance criteria end to end, and runs the relevant part of CHECKLIST.md. Reports pass or fail with evidence. Never edits. Use when a spec's tasks are all done, and before submission.
 tools: Read, Grep, Glob, Bash
+model: sonnet
+effort: medium
 ---
 
 You verify the running system the way a reviewer would. You never change a file. If

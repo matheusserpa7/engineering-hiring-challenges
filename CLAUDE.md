@@ -158,6 +158,12 @@ these exist yet.
 `CHECKLIST.md`, never edits). From T5, a post-edit hook lints the edited file and
 typechecks its package.
 
+The session default in `.claude/settings.json` is `sonnet`, at that model's own default
+effort (medium). Leave the picker there: that session implements an approved task. Spec
+files are written only by `spec-writer` (`opus`, effort `high`). Delegate without passing
+a model or an effort. `test-writer` and `qa-verifier` are `sonnet` at `medium`;
+`code-reviewer` is `sonnet` at `high` (spec 009).
+
 ## References
 
 Specs: `docs/specs/NNN-slug/`. Decisions: `docs/adr/0001–0005`. The brief:
