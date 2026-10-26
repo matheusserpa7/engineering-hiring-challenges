@@ -14,7 +14,9 @@ apps/api/src/db/
   migrations/0001_initial.ts        the whole schema, up only
   migrate.ts                        runMigrations(db): Kysely Migrator, static provider
   seed/read-seed.ts                 pure: files → validated records (csv-parse, Zod, NFC)
-  seed/seed.ts                      runSeed(db): accounts, campaigns, donors, donations, setval
+  seed/seed.ts                      loadSeed(dir): files → ParsedSeed; runSeed(db, seed):
+                                    accounts, campaigns, donors, donations, setval
+apps/api/src/logger.ts              + err serializer: drops a Postgres error's row data
 apps/api/src/auth/password.ts       hashPassword / verifyPassword (scrypt)
 apps/api/src/start.ts               migrate → seed → listen
 apps/api/src/scripts/{migrate,seed}.ts   the npm run db:migrate / db:seed entry points
@@ -158,26 +160,40 @@ number (or the row position) and the field names only. Zod messages are never us
 errors can quote the offending record, so they are caught and rethrown as a `SeedError`
 carrying only `csv-parse`'s error code.
 
-`runSeed(db)` runs in one transaction, in this order:
+**API.** `loadSeed(seedDir): ParsedSeed` reads `campaigns.json` and `donations.csv` and
+calls `parseSeed`. `runSeed(db, seed)` writes the result in **one** transaction, so a bad
+row leaves nothing half-seeded, accounts included. Order:
 
 1. **Accounts first** (B3):
-   - `INSERT … ON CONFLICT (email) DO NOTHING` for `admin@`, `donor@` and `other@`;
-   - the scrypt hash is computed only when the account doesn't exist yet, so restarts stay
-     fast.
+   - `INSERT … ON CONFLICT (email) DO NOTHING` for `admin@` (`HCC Admin`), `donor@`
+     (`Test Donor`) and `other@` (`Other Donor`), with the `SETUP.md` passwords;
+   - hashed one at a time (128 MiB each), and only for accounts that don't exist yet, so
+     restarts stay fast.
 2. **Campaigns:** `INSERT … ON CONFLICT (slug) DO NOTHING`.
-3. **Donors:** one per distinct lower-cased email. The first row by `created_at` sets the
-   `full_name` (B1). `ON CONFLICT (email) DO NOTHING`, so an account keeps its role and
-   password.
+3. **Donors:** one per distinct lower-cased email. The earliest donation by `created_at`,
+   receipt number as tie-break, names the donor (B1). `ON CONFLICT (email) DO NOTHING`, so
+   an account keeps its role, hash and name.
 4. **Donations:**
-   - `source = 'import'`, `refunded_at = null` (B2), with no charge id and no key;
-   - `ON CONFLICT (receipt_number) DO NOTHING`.
-5. **The sequence:** `setval('receipt_number_seq', max(seeded number))`, so spec 004's
-   first receipt is `…000076`. Never lower: it takes `greatest()` with the current value.
+   - `source = 'import'`, `refunded_at = null` (B2), `idempotency_key = null`, no charge
+     id; `created_at` and `updated_at` both from the CSV; currency from the campaign;
+   - `ON CONFLICT (receipt_number) DO NOTHING`;
+   - inserted in the same order (time, then receipt) on every run;
+   - campaign and donor ids are looked up only for this seed's slugs and emails, not for
+     every donor the app has collected;
+   - one `INSERT` statement: 75 rows × ~18 columns is far below pg's 65,535-parameter
+     limit (reached near 3,600 rows). Chunk if the seed ever grows.
+5. **The sequence:** `setval` to the highest seeded receipt number, via `greatest()` with
+   the current value (counted only when `is_called`), so it only moves forward and spec
+   004's first receipt is `…000076`. One statement reads and sets; a `nextval` between the
+   two could be undone. Accepted: the seed runs before the server listens. The maximum is a
+   `reduce` starting at 1: `setval` rejects 0, and an empty list must not throw.
 
 **Idempotency and concurrency.** Natural keys plus `ON CONFLICT DO NOTHING` make a re-run
-a no-op, and two seeds racing simply both no-op on the loser's rows. The seed never
-updates, so donations written by the app survive restarts (B4). No transaction-level
-locking is needed beyond the unique constraints.
+a no-op. Two concurrent seeds don't deadlock because both insert in the same order: the
+loser waits on the winner's unique key, then skips. The seed never updates, so rows edited
+or written by the app survive restarts (B4). No locking beyond the unique constraints.
+A consequence, accepted: a `donors` row that already holds a fixture email (e.g. a guest
+`donor@` with a null hash) is never given a password.
 
 ## 6. Passwords (`apps/api/src/auth/password.ts`)
 
@@ -204,16 +220,32 @@ locking is needed beyond the unique constraints.
 ## 7. Start-up, scripts and Docker
 
 - **`start.ts`:**
-  - `loadConfig` → `runMigrations` → `runSeed` → `listen`.
-  - A failure in either step logs `{ step: 'migrate' | 'seed' }` and exits 1.
-  - Health stays unreachable until then, so `compose up --wait` can only succeed on a
-    fully seeded database.
+  - `loadConfig`, then the steps `migrate` and `seed` in order, each logged as
+    `{ step }`.
+  - A failure logs fatal with the step name and exits 1.
+  - The server doesn't listen until both are done, so `compose up --wait` can only succeed
+    on a fully seeded database.
+  - No unit test, by choice: it is an entry point with top-level side effects. Verified by
+    running it (a normal start; a `SEED_DIR` that doesn't exist exits 1 naming `seed`) and
+    again by the compose run in T6.
+  - SIGTERM/SIGINT are handled only once the steps finish. `docker compose down` during a
+    first-run seed waits for Docker's 10 s SIGKILL; the transaction rolls back, so the
+    data stays safe. Accepted: rare.
+  - Until T6 the image has no seed folder, so the container exits 1 naming `seed`.
 - **Root scripts:** `db:migrate` / `db:seed` call
   `npm run db:migrate|db:seed -w apps/api`, which runs `tsx src/scripts/*.ts` with the
-  root `.env`. The entry points just call the same functions as `start.ts`.
-- **Seed files in Docker:**
-  - The seed files are read from `SEED_DIR`, default `roles/full-stack-engineer/seed`
-    resolved from the repo root.
+  root `.env`. The entry points call the same functions as `start.ts`.
+  - `db:seed` migrates first, then seeds, so it works on a database nobody has migrated.
+  - Both scripts, at the root and in `apps/api`, build shared first.
+- **Seed files:**
+  - Read from `SEED_DIR`, parsed in `config.ts` only. Relative values are resolved against
+    the repo root, not the working directory. The root is three folders up from the
+    config file, in `src/` and `dist/` alike, so it is the same under tsx, Vitest and the
+    image.
+  - The default is the repo-relative `roles/full-stack-engineer/seed`. Any relative value
+    is joined to the same root anchor; an absolute value is used as is. A relative
+    `SEED_DIR` therefore means the same folder under `npm -w apps/api`, at the root and in
+    the image.
   - The runtime image copies that folder to the same relative path, so the files are the
     unmodified originals, as reviewers can check.
 - **CI `stack` job:** adds `docker compose exec -T db psql …` to assert 75 donations and the
@@ -228,6 +260,10 @@ locking is needed beyond the unique constraints.
   - A bad seed row fails the whole seed transaction, naming the receipt number, never the
     row's content (it has PII).
   - A migration error aborts start-up.
+  - A Postgres error's `detail`, `where` and `internalQuery` carry the failing row (name,
+    email, message), and pino copies every property of an error into the log line.
+    `createLogger` has an `err` serializer that drops those three keys and keeps `code`,
+    `constraint` and `table`.
   - No HTTP surface changes.
 - **Authorisation:** not applicable; no endpoint touches this data yet.
 
@@ -239,7 +275,9 @@ locking is needed beyond the unique constraints.
 | `apps/api/test/password.test.ts` | Unit | Hash then verify is true; a wrong password is false; two hashes of one password differ (salt). Parameters are read from the stored value: a hand-built cheap hash with non-default r/p verifies, and a key derived with other parameters than claimed is false. NFC and NFD forms of one password are equal. About 26 malformed variants, including a wrong key length, are false, not a throw. N = 2^30 is false in under 2 s |
 | `apps/api/test/read-seed.test.ts` | Unit, on the real files | 3 campaigns and 75 rows. Row 1's name is byte for byte `Shrestha, Bijay "BJ"`. Row 2's Devanagari is in NFC. Amounts are integers and row 3 is 2,500,000. Row 1's message is read from `dedication_message`. Row 14's message is whole at 283 code points; row 71 (type, no name) is accepted. The same CSV with LF, with CRLF and with a BOM gives identical records. Decomposed text comes out in NFC. Each bad input is edited from a valid row: amount `12.345`, an unknown status, an unknown privacy mode, an unknown campaign slug, a duplicate receipt number, a bad `created_at`, an unbalanced quote, an extra JSON key. Each throws a `SeedError` that names the receipt number and contains no name, email or message text. A receipt cell holding an email is not echoed: the position is named and `receiptNumber` is null. Rejected: a receipt with a trailing space, in lower case or with too few digits; a bad email; a calendar date that does not exist (`2026-02-30`, not rolled over); a row with an extra column and an unknown header column, reporting only the `csv-parse` code; an empty and a header-only file. `campaigns.json`: an unknown key, invalid JSON, a duplicate slug and a lower-case currency are rejected |
 | `apps/api/test/db/migration.test.ts` | Integration (Testcontainers `postgres:16-alpine`) | Raw inserts are rejected: amount 99 and 2,500,001, a duplicate receipt, an unknown status, a non-import message of 281 code points, a non-import dedication type without a name, an unknown campaign, an email differing only in case. 280 emoji is accepted (code points, A12). `int8` comes back as a `number`; an unsafe one throws. `int8[]` comes back as `number[]`; an unsafe element throws. A typed round-trip through `db` (campaigns, donors, donations: `preset_cents`, nullable and `Generated` columns) matches the `Database` types. `receipt_number_seq` exists, checked in `pg_sequences` without `nextval`, so T5 still sees 76 |
-| `apps/api/test/db/seed.test.ts` | Integration | Counts 75 / 66-7-2 / 48-15-12. Aangan `SUM(amount_cents)::bigint` = the number 4305800. Rows 11 and 12 belong to one donor. 3 accounts with roles and verifiable passwords; everyone else's hash is null. A second `runSeed` changes no row count and no hash. A donation inserted between runs survives. The next sequence value is 76 |
+| `apps/api/test/config.test.ts` (`SEED_DIR` cases) | Unit | Compare the full resolved path, not just `isAbsolute`: the default is `<repo root>/roles/full-stack-engineer/seed`; a relative `SEED_DIR` becomes `<repo root>/<value>`, whatever the working directory; an absolute `SEED_DIR` comes back unchanged |
+| `apps/api/test/logging.test.ts` (database error case) | Unit | A Postgres error's row data (`detail`, `where`, `internalQuery`) is not in the log line |
+| `apps/api/test/db/seed.test.ts` | Integration | Counts 75 / 66-7-2 / 48-15-12. Aangan `SUM(amount_cents)::bigint` = the number 4305800. Campaign columns match `campaigns.json`. Row 1 byte for byte; row 2 in NFC; a family-privacy row is stored as such. Rows 11 and 12 belong to one donor. 3 accounts with their roles, names and verifiable passwords; every other donor's hash is null. Ownership: admin owns none, `donor@` owns 000019–21, `other@` 000022–23. Legacy rows 14 and 71 are present. `created_at` / `updated_at` come from the CSV, in UTC. A second and third run change nothing. Two concurrent runs end with 75 donations and the 3 demo accounts, and the same row counts as a single run; the account passwords still verify. A row edited after the first run, and a web donation, survive. A pre-existing `donor@` keeps its role, hash and name. Next sequence value is 76, and 501 after a bump to 500. An invalid donation (50 cents) rolls everything back, accounts included, and leaves the sequence untouched. A synthetic donor with two names proves the earliest-by-time rule (B1): the real seed has no donor with two names, so a real-data test can't fail on it. When two of one donor's donations share a timestamp, the lower receipt number names the donor |
 
 Vitest runs two projects:
 
@@ -272,7 +310,9 @@ Vitest runs two projects:
 |---|---|
 | Testcontainers on Windows / Docker Desktop (Ryuk, named pipes) | Resolved in T2: the container starts and stops cleanly on Windows with Ryuk enabled, in about 4 s warm. No fallback needed |
 | `npm test` now needs Docker | `CLAUDE.md` already says so; the README says it in spec 006. Unit tests stay runnable alone through the project split: `vitest run --project unit` (§9) |
-| The pool's `query_timeout: 5000` also applies to migrations, because `start.ts` reuses the pool. A slow migration (backfill, index build) or an instance waiting on the advisory lock could be aborted client-side | Not needed for 0001 on an empty database. T5 gives `start.ts` its own pool for migrate + seed with a longer `query_timeout`, or revisits the decision then |
+| The pool's `query_timeout: 5000` also applies to migrations, because `start.ts` reuses the pool. A slow migration (backfill, index build) or an instance waiting on the advisory lock could be aborted client-side | Not needed for 0001 on an empty database. Revisited in T5; no separate pool. `query_timeout` is per statement, not per transaction. The slowest seed statement is the 75-row insert (milliseconds), and the password hashing runs between statements, so the timeout never sees it. Residual, accepted: a second instance starting at the same moment waits on the first one's uncommitted keys for the rest of its transaction, and on a slow machine could hit the 5 s timeout, exit 1 and be restarted by the orchestrator. Compose runs one API, and the data stays correct |
+| A relative `SEED_DIR` resolved against the working directory would mean `apps/api/<value>` under `npm -w` and `<root>/<value>` at the root | **Resolved.** Relative values are joined to the repo-root anchor (three folders up from `config.ts`), like the default; absolute values are used as is (§7). The config test compares the full resolved path (§9) |
+| The seed is one `INSERT` with ~18 parameters per row; pg's 65,535 limit is reached near 3,600 rows | 75 rows today. Chunk if the seed grows |
 | scrypt N=2^17 is slow per hash (~0.3 s) | Only on the first seed (3 hashes). Tests use the same parameters, because a weaker test hash would test a different thing |
 | CRLF working copies on Windows | csv-parse auto-detects line endings; a test feeds both |
 | Shared's new runtime dependency (`zod`) missing from the API image | T6 checks `node -e "import('@aangan/shared')"` inside the built image |

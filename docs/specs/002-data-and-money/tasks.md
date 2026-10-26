@@ -37,10 +37,12 @@ fix → tick here → diff summary, decisions and commit message → Matheus say
   - Done: green. A bad row fails naming its receipt number and nothing else.
   - Commit: `feat(api): parse the seed files into validated records`
 
-- [ ] **T5 — Idempotent seed, on start and on demand**
+- [x] **T5 — Idempotent seed, on start and on demand**
   - Files: `apps/api/src/db/seed/seed.ts`, `apps/api/src/start.ts`,
     `apps/api/src/scripts/seed.ts`, `apps/api/test/db/seed.test.ts`, root `package.json`
-    (`db:seed`), `apps/api/README.md`
+    (`db:seed`), `apps/api/package.json`, `apps/api/README.md`, `apps/api/src/config.ts`
+    and `apps/api/test/config.test.ts` (`SEED_DIR`), `apps/api/src/logger.ts` and
+    `apps/api/test/logging.test.ts` (no row data in logged errors)
   - Test first: `seed.test.ts`. It checks the seed-data README numbers, idempotency, the
     accounts and the sequence.
   - Done:
@@ -106,7 +108,7 @@ T1 comes first: T4 parses dollars with it. T2 comes before T5 (schema) and T3 be
     - Spec 005: filter admin search on `email::text ILIKE …`, so it uses the trigram
       index (tech spec §3).
     - T5: `start.ts` gets its own pool with a longer `query_timeout` for migrate + seed,
-      or the decision is revisited (§11).
+      or the decision is revisited (§11). Revisited in T5: not needed, see the T5 note.
 - T3, done. Test-first: red because the module was missing.
   - Two deliberate mutations proved the tests bite: no NFC gave 1 failure; rethrowing
     scrypt errors gave 3.
@@ -164,3 +166,54 @@ T1 comes first: T4 parses dollars with it. T2 comes before T5 (schema) and T3 be
         constraint rejects min/max, and the seed is fixed;
       - quoted newlines are kept as in the file, so CRLF and LF files give different
         message text. The real seed has none.
+- T5. Test-first: red because the module was missing.
+  - Decided while implementing; tech spec §5, §7 and §9 were updated after the code,
+    against the spec-first rule: the `loadSeed` / `runSeed(db, seed)` split, one
+    transaction including accounts, the fixed insert order that prevents deadlocks, the
+    forward-only `setval`, `SEED_DIR` anchored to the config file, `db:seed` migrating
+    first, and no unit test for `start.ts`.
+  - The test-writer had swapped the refunded and failed counts (the seed README says 7
+    refunded, 2 failed). The test was fixed, not the code.
+  - Deliberate mutations, each failing exactly 1 test: the seed updates rows; the
+    sequence can go back; the latest row names the donor; no time ordering.
+  - The first B1 test could not fail, found by the "latest row names the donor" mutation:
+    the real seed has no donor with two names. A synthetic donor test was added.
+  - Accepted untested: "hash only when the account is new" is a speed-only shortcut, not
+    observable without a flaky timing test.
+  - Verified for real: `db:seed` twice on the compose db leaves 75 donations, 72 donors
+    and Aangan at 4,305,800 cents; `start.ts` logs migrate, seed, listening; a broken
+    `SEED_DIR` exits 1 naming `seed`.
+  - `query_timeout` revisited (T2 forward note): no separate pool. It applies per
+    statement; the slowest seed statement is the 75-row insert, and hashing runs between
+    statements. Residual accepted in §11: a second instance starting at the same moment
+    could time out waiting on the first one's keys, exit 1 and be restarted.
+  - Review. Every fix below went into the code first; tech spec §1, §5, §7, §8, §9 and §11
+    were updated after it, against the spec-first rule.
+    - Major (fixed): PII in logs. pino copies every property of an error, and a Postgres
+      error's `detail` / `where` / `internalQuery` carry the failing row. `createLogger`
+      now has an `err` serializer that drops them; a new logging test proves it.
+    - Fixed:
+      - `SEED_DIR` is resolved in `config.ts` against the repo root (three folders up
+        from the config file), relative values included; an absolute value is used as is
+        (§7, §11 resolved). An earlier version resolved against the working directory
+        while its comment and the spec note claimed otherwise. The spec-writer caught it;
+        the config test, which only checked `isAbsolute`, could not. Fixed after the spec
+        correction; the test now compares the full resolved path (§9).
+      - `insertDonations` looks up campaigns and donors only for this seed's slugs and
+        emails; the sequence maximum is a `reduce` starting at 1 (`setval` rejects 0, an
+        empty list must not throw).
+      - Tests added: campaign columns against `campaigns.json`, a family-privacy row,
+        concurrency against a single-run baseline plus the password check, the
+        receipt-number tie-break on a shared timestamp.
+      - Removed: the real-data B1 test, which re-implemented the production rule and
+        could not fail. The synthetic donor test stays.
+    - Accepted, not fixed:
+      - one `INSERT` for all rows: far below pg's 65,535-parameter limit (~3,600 rows).
+        Chunk if the seed grows;
+      - SIGTERM/SIGINT are handled only after the start-up steps, so `compose down`
+        during a first-run seed waits for Docker's 10 s SIGKILL. The transaction rolls
+        back; rare;
+      - "hash only for new accounts" stays untested (speed only, above);
+      - a `donors` row that already holds a fixture email (e.g. a guest `donor@` with a
+        null hash) never gets a password, because the seed never updates (B4, §5);
+      - the image has no seed folder until T6, so the container exits 1 naming `seed`.

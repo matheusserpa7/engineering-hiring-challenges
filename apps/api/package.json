@@ -9,6 +9,7 @@
     "build": "tsc -p tsconfig.build.json",
     "start": "node dist/start.js",
     "db:migrate": "tsx --env-file-if-exists=../../.env src/scripts/migrate.ts",
+    "db:seed": "tsx --env-file-if-exists=../../.env src/scripts/seed.ts",
     "typecheck": "tsc --noEmit",
     "test": "vitest run"
   },

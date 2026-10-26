@@ -1,11 +1,32 @@
 import { createApp } from './app.js';
 import { loadConfig } from './config.js';
+import { createDb } from './db/database.js';
+import { runMigrations } from './db/migrate.js';
 import { createPool, pingDb } from './db/pool.js';
+import { loadSeed, runSeed } from './db/seed/seed.js';
 import { createLogger } from './logger.js';
 
 const config = loadConfig();
 const logger = createLogger(config.LOG_LEVEL);
 const pool = createPool(config.DATABASE_URL, logger);
+const db = createDb(pool);
+
+// The server does not listen until both steps are done, so a health check can only pass on a
+// migrated and seeded database. A failure names the step and stops the container.
+const startupSteps: [string, () => Promise<void>][] = [
+  ['migrate', () => runMigrations(db)],
+  ['seed', () => runSeed(db, loadSeed(config.SEED_DIR))],
+];
+for (const [step, run] of startupSteps) {
+  try {
+    await run();
+    logger.info({ step }, 'startup step done');
+  } catch (error) {
+    logger.fatal({ err: error, step }, 'startup step failed');
+    process.exit(1);
+  }
+}
+
 const app = createApp({ logger, pingDb: () => pingDb(pool) });
 
 const server = app.listen(config.PORT, (error) => {
