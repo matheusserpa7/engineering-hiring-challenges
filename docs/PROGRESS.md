@@ -4,7 +4,7 @@ Where the work stands, and what comes next. Updated at the end of every working 
 The plan itself lives in [`specs/000-overview/tasks.md`](specs/000-overview/tasks.md). This
 file is only the current position.
 
-Last updated: 2026-10-25 · Time spent so far: ~1 h (reading, overview spec, foundation spec, T1)
+Last updated: 2026-10-26
 
 ## Phases
 
@@ -12,8 +12,8 @@ Last updated: 2026-10-25 · Time spent so far: ~1 h (reading, overview spec, fou
 |---|---|---|
 | 0 — Understanding | Read the brief, rubric, checklist and docs 00–11; verify the seed data; list ambiguities | Done |
 | 1 — Overview | [PRD](specs/000-overview/prd.md), [Tech Spec](specs/000-overview/techspec.md), [Tasks](specs/000-overview/tasks.md), [ADRs 0001–0005](adr/) | Done · `02b074f` |
-| 2 — Foundation | [Spec 001](specs/001-foundation/): workspaces, tooling, CLAUDE.md, subagents, hook, Docker skeleton, CI | **In progress: T1 of 10 done** |
-| 3 — Features | Specs 002–005 (must-haves), then the status report | Not started |
+| 2 — Foundation | [Spec 001](specs/001-foundation/): workspaces, tooling, CLAUDE.md, subagents, hook, Docker stack, CI | **Done** · CI green: [run 40324681629](https://github.com/matheusserpa7/engineering-hiring-challenges/actions/runs/40324681629) |
+| 3 — Features | Specs 002–005 (must-haves), then the status report | Next: write spec 002 |
 | 4 — Submission | Spec 006: hardening, e2e, READMEs, AI-USAGE.md, clean-clone rehearsal, video | Not started |
 
 ## Specs
@@ -21,7 +21,7 @@ Last updated: 2026-10-25 · Time spent so far: ~1 h (reading, overview spec, fou
 | Spec | Status | Tasks |
 |---|---|---|
 | 000-overview | Approved, committed | — |
-| 001-foundation | Approved, executing | 1 / 10 |
+| 001-foundation | **Done**, pushed, CI green | 10 / 10 |
 | 002-data-and-money | Not written | — |
 | 003-public-campaign | Not written | — |
 | 004-donation-intake | Not written | — |
@@ -29,29 +29,30 @@ Last updated: 2026-10-25 · Time spent so far: ~1 h (reading, overview spec, fou
 | 006-hardening-and-submission | Not written | — |
 | 007 (S0) / 008 (X1) | Optional, only after 006 | — |
 
-## Commits so far
+## What exists now
 
-```
-282db08  chore: set up npm workspaces pinned to Node 24          spec-001/T1
-c9c3de7  docs: add spec 001 for the project foundation           spec-001
-02b074f  docs: add the project overview spec and ADRs            spec-000/T0
-```
+- `npm ci && npm test` runs 32 tests (shared 14, API 13, web 5). `lint`, `typecheck` and
+  `test` build the shared package first.
+- `cp .env.example .env && docker compose up --build --wait` brings up db, api and web,
+  all healthy, in about 30 s from a cold build cache. The API is on `:4000`, the site on
+  `:3000`.
+- `npm run dev` runs shared's watcher, the API (`tsx watch`) and Vite on `:5173`. It needs
+  the compose `db`, or any Postgres, at the `DATABASE_URL` in `.env`.
+- Agent setup: `CLAUDE.md`, four subagents in `.claude/agents/`, and a post-edit
+  lint/typecheck hook (about 2 s per edit).
 
 ## Next steps, in order
 
-1. **spec-001/T2**: `tsconfig.base.json`, `eslint.config.js` (strictTypeChecked, money and
-   `v-html` bans), Prettier, root scripts. TypeScript pinned to `~6.0.3` (see spec 001 B2).
-2. **T3**: `CLAUDE.md` with the spec-first rule, commands, conventions, money rule, security
-   checklist, and "no feature without a test".
-3. **T4**: subagents `spec-writer`, `test-writer`, `code-reviewer`, `qa-verifier`.
-4. **T5**: post-edit lint/typecheck hook.
-5. **T6–T8**: shared error envelope → API skeleton (`/api/health`) → Vue skeleton.
-6. **T9**: Docker compose stack, verified from a pruned cache; note the cold-build time.
-7. **T10**: CI workflow. Push, and confirm both jobs are green.
-8. Write spec 002 (data and money) → approval → execute.
-
-The flow for every task is in [`specs/001-foundation/tasks.md`](specs/001-foundation/tasks.md):
-test → implement → checks → review → tick → one commit per task.
+1. Write **spec 002 (data and money)** with the `spec-writer` flow: PRD, tech spec and
+   tasks. Then stop for approval.
+2. Carry the forward notes from spec 001 into the specs they belong to. They're listed at
+   the end of [`specs/001-foundation/tasks.md`](specs/001-foundation/tasks.md):
+   - 002: test the undecodable URL parameter case; check shared's runtime dependencies
+     end up in the API image.
+   - 003: `trust proxy` set to `1`, not `true`.
+   - 004: keep the `?q=` search out of the access log.
+   - 005: helmet CSP `default-src 'none'`; the `Origin` allow-list includes `:5173` in dev.
+3. Execute 002, then 003–005, one task per commit.
 
 ## Open questions for the company
 
@@ -64,12 +65,17 @@ dedications).
 
 ## Environment notes (this machine)
 
-- Node **24.22.1** is installed at `C:\Program Files\nodejs` and comes first on PATH. Node
-  22 is still installed; terminals opened before the install still resolve to it, so
-  reopen them.
-- **Docker Desktop must be running** before `npm test` (Testcontainers, from spec 002) and
-  before any `docker compose` command.
+- Node **24.22.1** is at `C:\Program Files\nodejs` and comes first on PATH. Node 22 is
+  still installed, so terminals opened before the install still resolve to it. Reopen them.
+- **Docker Desktop must be running** for compose, and for `npm test` once spec 002 adds
+  Testcontainers.
 - `core.autocrlf=true` on this machine. `.gitattributes` forces LF, so keep it.
+- npm runs through `cmd.exe` here, where `^` is an escape character. Don't put `^` in npm
+  arguments.
+- The first `npm install -w <dir>` into a brand-new workspace has silently done nothing,
+  twice. Check its `package.json` afterwards.
+- `AGENTS.md` and `.codex/` are the user's own (a Codex port). Leave them untracked and
+  untouched.
 
 ## How to resume
 
@@ -78,6 +84,7 @@ git pull                # if working from another machine
 node -v                 # v24.x
 docker info             # daemon running
 npm ci
+cp .env.example .env    # if .env is missing
 ```
 
-Then continue at the first unticked task in `docs/specs/001-foundation/tasks.md`.
+Then continue at the first unticked task of the current spec.

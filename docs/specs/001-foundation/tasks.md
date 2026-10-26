@@ -75,7 +75,7 @@ put the agent rules in place before the code they govern. Budget: about 1 h 15 i
     `.env`, compose fails with the copy hint.
   - Commit: `build: add the docker compose stack with health checks`
 
-- [ ] **T10 — CI workflow**
+- [x] **T10 — CI workflow**
   - Files: `.github/workflows/ci.yml`
   - Done: after Matheus pushes, both `check` and `stack` are green on GitHub. A link to the
     run is recorded here.
@@ -257,3 +257,12 @@ put the agent rules in place before the code they govern. Budget: about 1 h 15 i
       `X-Forwarded-For` could be spoofed.
     - Spec 002: when shared gains a runtime dependency, check it is in the API image.
     - Spec 006: the README states the cold-build time and both URLs.
+- T10, done. Both jobs are green on the first push (`ce5f4dd`):
+  [run 40324681629](https://github.com/matheusserpa7/engineering-hiring-challenges/actions/runs/40324681629).
+  `check` took 35 s and `stack` 44 s. The `stack` job ran the reviewer's path on a fresh
+  runner, and its cold build finished well under a minute.
+  - Actions are pinned to commit SHAs (checkout v7.0.1, setup-node v7.1.0). Both are
+    lightweight tags, so the SHA is the commit itself.
+  - Before the push: a secret scan of the unpushed history (`docs/04` §1) found only docs
+    and test fixtures, and `.env.example` is the only tracked env file.
+  - Locally, the `check` job's steps passed from a fresh `npm ci` before pushing.
