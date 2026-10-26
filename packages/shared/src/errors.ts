@@ -2,7 +2,9 @@
 // these types and the web client reads it with isApiErrorBody, so both sides share one
 // list of codes. Each spec adds the codes its endpoints need.
 export const ERROR_CODES = [
+  'bad_request',
   'malformed_json',
+  'payload_too_large',
   'not_found',
   'unavailable',
   'internal_error',

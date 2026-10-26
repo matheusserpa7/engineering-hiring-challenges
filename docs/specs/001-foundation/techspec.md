@@ -88,8 +88,8 @@ not part of the hook: they're too slow per edit, and CI and the task flow cover 
 ## 3. Shared package (T6)
 
 `packages/shared/src/errors.ts` holds the error envelope type `ApiErrorBody` and the
-`ErrorCode` union (`malformed_json | not_found | unavailable | internal_error`, extended by
-later specs) plus an `isApiErrorBody` guard. The API's error middleware builds the envelope from
+`ErrorCode` union (`bad_request | malformed_json | payload_too_large | not_found |
+unavailable | internal_error`, extended by later specs) plus an `isApiErrorBody` guard. The API's error middleware builds the envelope from
 this type. The web client's `fetch` wrapper uses the guard to read it. That makes the
 shared package real from its first commit, before money exists (spec 002).
 
@@ -97,15 +97,25 @@ shared package real from its first commit, before money exists (spec 002).
 
 ```
 apps/api/src/
-  config.ts      Zod-parsed env (PORT, NODE_ENV, LOG_LEVEL, DATABASE_URL); fails fast, never logs values
+  config.ts      Zod-parsed env (PORT, LOG_LEVEL, DATABASE_URL); fails fast, never logs values.
+                 NODE_ENV is read by Express itself; it joins the schema when our code needs it
   logger.ts      pino; redacts req.headers.cookie and authorization
   app.ts         createApp(deps) — helmet, express.json({limit:'16kb'}), pino-http, routes,
-                 notFound, errorHandler. deps = { pingDb } so tests inject failures
+                 notFound, errorHandler. deps = { logger, pingDb } so tests inject failures
   http/health.ts GET /api/health → pingDb() ? 200 {status:'ok'} : 503 {error:{code:'unavailable',message}}
   http/errors.ts AppError(status, code, message); errorHandler: AppError → its envelope;
-                 malformed JSON → 400 malformed_json; anything else → log + 500 internal_error
-  db/pool.ts     pg Pool from DATABASE_URL (Kysely arrives in 002)
-  start.ts       listen; SIGTERM/SIGINT → server.close + pool.end
+                 malformed JSON → 400 malformed_json; body over the limit → 413
+                 payload_too_large; any other client error Express or body-parser marks
+                 as such (4xx status with expose: true: bad charset, bad encoding, an
+                 undecodable URL parameter) → that status + bad_request, not logged as an
+                 error; anything else → log + 500 internal_error
+  db/pool.ts     pg Pool from DATABASE_URL (Kysely arrives in 002). connectionTimeoutMillis
+                 2 s and query_timeout 5 s: a database that is down, or that stops
+                 answering on an open connection, fails the request instead of hanging it.
+                 An 'error' listener, because an idle client's error with no listener
+                 crashes the process
+  start.ts       listen; SIGTERM/SIGINT → server.close + pool.end, once (a second signal
+                 is ignored), with an 8 s forced exit so it finishes before Docker's SIGKILL
 ```
 
 Why `start.ts` handles signals: Node as PID 1 in a container has no default `SIGTERM`
@@ -177,7 +187,9 @@ Vite + Vue 3 + TS. `App.vue` renders the product name and an API status line fro
 | Test | Type | Proves |
 |---|---|---|
 | `apps/api/test/health.test.ts` | Supertest on `createApp` with an injected `pingDb` | 200 when the DB answers, 503 + envelope when it throws |
-| `apps/api/test/errors.test.ts` | Supertest | Unknown route → 404 `not_found` envelope. A throwing route → 500 `internal_error` whose body contains neither the error message nor `at ` stack frames. Malformed JSON → 400 |
+| `apps/api/test/errors.test.ts` | Supertest | Unknown route → 404 `not_found` envelope. A throwing route, sync and async → 500 `internal_error` whose body contains neither the error message nor `at ` stack frames, while the log does contain the detail. Malformed JSON → 400. A body over 16 kB → 413. An unsupported charset → 415 `bad_request`, not 500 |
+| `apps/api/test/logging.test.ts` | Supertest + captured logger | `Cookie` and `Authorization` values never reach the request log |
+| `apps/api/test/config.test.ts` | Vitest | A missing or invalid variable fails with its name and never its value (a password in `DATABASE_URL` stays out of the message) |
 | `packages/shared/test/errors.test.ts` | Vitest | `isApiErrorBody` accepts the envelope and rejects near-misses (missing code, string body, null) |
 | Lint guard check | Manual, at T2 | A scratch file using `parseFloat` / `toFixed` / `v-html` fails lint. Deleted, not committed |
 | Hook check | Manual, at T5 | Editing a file to add a type error makes the hook report it |

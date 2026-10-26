@@ -47,9 +47,10 @@ put the agent rules in place before the code they govern. Budget: about 1 h 15 i
   - Done: `npm test -w packages/shared` is green, and `build` emits `dist/` with `.d.ts`.
   - Commit: `feat(shared): add the API error envelope type`
 
-- [ ] **T7 — API skeleton with health and error handling**
-  - Files: `apps/api/{package.json,tsconfig.json,src/{config,logger,app,start}.ts,src/http/{health,errors}.ts,src/db/pool.ts,test/{health,errors}.test.ts,README.md}`
-  - Test first: health 200/503, 404 envelope, 500 without leaks, 400 on malformed JSON.
+- [x] **T7 — API skeleton with health and error handling**
+  - Files: `apps/api/{package.json,tsconfig.json,tsconfig.build.json,src/{config,logger,app,start}.ts,src/http/{health,errors}.ts,src/db/pool.ts,test/{health,errors,config}.test.ts,README.md}`, plus `payload_too_large` in shared's `ERROR_CODES`
+  - Test first: health 200/503, 404 envelope, 500 without leaks (detail only in the log),
+    400 on malformed JSON, 413 over the body limit, config errors name the variable only.
   - Done: tests green. `npm run dev -w apps/api` against a local db answers
     `/api/health`. Missing env vars fail fast with the variable's name, not its value.
   - Commit: `feat(api): add the Express skeleton with a health check`
@@ -151,3 +152,39 @@ put the agent rules in place before the code they govern. Budget: about 1 h 15 i
     - Added `declarationMap`, so go-to-definition lands in `src`.
   - Install gotcha: `npm` runs through `cmd.exe` here, where `^` is an escape character.
     Don't put `^` ranges in npm arguments; npm writes the caret into `package.json` itself.
+  - Install gotcha: the first `npm install -w <dir>` into a brand-new workspace has twice
+    done nothing silently. Check `package.json` afterwards and re-run if needed.
+- T7, done. Tech spec §4 and §8 were updated before the code: the 413 code, the pool's
+  timeouts and error listener, `config.test.ts`. Tests were red first (modules missing),
+  now 13 green.
+  - Manual check against a real Postgres:
+    - 200 when the database answers.
+    - Database stopped: 503 in 0.1 s, and the process survives the idle client's error.
+    - Database paused: 503 in 5.1 s on an open connection, 2.2 s on a new one, then 200
+      once it's unpaused.
+    - A missing `DATABASE_URL` stops boot and names only the variable.
+    - `npm run dev` reads the root `.env`.
+  - SIGTERM can't be tested on Windows; it is checked in T9 by timing `compose down`.
+  - esbuild's postinstall is skipped by npm 11's script approval. tsx works without it, so
+    no approval was added.
+  - Review: 2 majors, 9 minors.
+    - Major: client errors (bad charset or encoding, an undecodable URL parameter) became
+      500s logged as errors. Now they get their 4xx status and the `bad_request` code, and
+      are not logged as errors. Test-first: the charset case returned 500.
+    - Major: `connectionTimeoutMillis` doesn't cover a query on an open connection, and a
+      paused database hung the health check indefinitely. Fixed with `query_timeout` 5 s,
+      verified with `docker pause`.
+    - Minors fixed: one-shot shutdown with an 8 s forced exit; the `headersSent` path logs
+      through pino; a test for async throws; a test for log redaction; README corrections;
+      `NODE_ENV` removed from the schema because nothing reads it yet.
+    - Accepted: a 500 produces two log lines, the access line and the error line with
+      its cause.
+    - Deferred, each to the spec where it matters:
+      - helmet CSP `default-src 'none'`: spec 005, ADR 004.
+      - `trust proxy` behind nginx, needed for per-IP rate limits: spec 003.
+      - The access log includes `?q=`, a donor-name search, so redact or omit the query
+        string: spec 004.
+      - An empty env var (`PORT=`) fails instead of taking its default, so compose must
+        leave unset variables out: T9.
+      - The undecodable URL parameter case gets its own test once routes have parameters:
+        spec 002.
