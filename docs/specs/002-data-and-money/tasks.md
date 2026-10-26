@@ -24,7 +24,7 @@ fix → tick here → diff summary, decisions and commit message → Matheus say
     - `npm run db:migrate` against the compose db works, and running it twice is a no-op.
   - Commit: `feat(api): add the initial schema migration`
 
-- [ ] **T3 — Password hashing**
+- [x] **T3 — Password hashing**
   - Files: `apps/api/src/auth/password.ts`, `apps/api/test/password.test.ts`
   - Test first: `password.test.ts`.
   - Done: green. The stored format carries its parameters. A malformed hash returns false.
@@ -107,3 +107,34 @@ T1 comes first: T4 parses dollars with it. T2 comes before T5 (schema) and T3 be
       index (tech spec §3).
     - T5: `start.ts` gets its own pool with a longer `query_timeout` for migrate + seed,
       or the decision is revisited (§11).
+- T3, done. Test-first: red because the module was missing.
+  - Two deliberate mutations proved the tests bite: no NFC gave 1 failure; rethrowing
+    scrypt errors gave 3.
+  - The fixed 32-byte key length was found by the red test run, not planned: a truncated
+    stored key verified. The code came first and tech spec §6 and §9 were updated after
+    it, against the spec-first rule.
+  - Review: no blockers. Major, fixed: the "non-base64 junk" cases passed only because junk
+    decodes to 0 bytes, so the strict round-trip had no test. New cases put one stray
+    character, space or newline, or strip the padding, on valid base64 that still decodes
+    to the real bytes. Removing the round-trip check now fails exactly those 5.
+  - Minors, fixed:
+    - `decodeBase64` lost its redundant length and `undefined` checks; the key-length
+      guard is simpler.
+    - The NFC/NFD test uses `\u` escapes, so a formatter can't normalise them.
+    - Lone-surrogate and NUL-byte password cases.
+    - Comments on why the short and long key cases matter.
+  - Minors accepted:
+    - The `catch` returns `false` for every derive failure, not only invalid params. A
+      host short on memory would make every login read as a wrong password. Spec 005
+      sets a container memory floor and watches login failures; testing a rethrow would
+      need a memory-starved host.
+    - No cap on `r`/`p` beyond `maxmem`: the stored value is ours. A huge `p` within
+      `maxmem` could pin a thread; noted, not fixed.
+    - Salt length is not enforced on verify: harmless, it is only scrypt input.
+  - Forward notes for spec 005:
+    - Apply the login rate limit before the hash.
+    - The default libuv pool is 4 threads, shared with fs and dns: at most 4 concurrent
+      hashes at ~128 MiB each (~512 MiB peak, ~17 logins/s measured). Set a container
+      memory limit of at least 1 GiB, or decide on a small semaphore or
+      `UV_THREADPOOL_SIZE`.
+    - The dummy-hash comparison for unknown emails stays in 005.

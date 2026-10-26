@@ -163,8 +163,18 @@ locking is needed beyond the unique constraints.
   128 MiB and Node's default limit is 32 MiB.
 - **Stored format:** `scrypt$N$r$p$saltB64$keyB64`, so the parameters can change later
   without breaking old hashes.
-- **Verify:** `verifyPassword(password, stored)` uses `timingSafeEqual`. It returns false,
-  never throws, on a malformed hash.
+- **Verify:** `verifyPassword(password, stored)` reads N, r and p from the stored value and
+  compares with `timingSafeEqual`. It returns false, never throws, on a malformed hash:
+  - The key length is fixed at 32 bytes; any other length is false. The format carries no
+    key length and scrypt output is prefix-consistent, so a truncated stored key would
+    verify against its own first bytes and weaken the check.
+  - Salt and key are decoded with a strict base64 round-trip, because Node's decoder
+    silently skips junk.
+  - Parameters scrypt refuses (N not a power of two, or above `maxmem`, e.g. N = 2^30) are
+    caught and give false. That is the only bound on a hostile stored value; r and p have
+    no separate cap. The value comes from our own database, so this is defence in depth,
+    not a trust boundary. A very large p within `maxmem` could still be slow: accepted.
+- **Normalisation:** the password is NFC-normalised on hash and on verify.
 - **Scope:** the dummy-hash comparison for unknown emails belongs to the login flow in
   spec 005.
 
@@ -203,7 +213,7 @@ locking is needed beyond the unique constraints.
 | Test | Type | Proves |
 |---|---|---|
 | `packages/shared/test/money.test.ts` | Unit | **M8 money:** the boundaries 0.99 / 1.00 / 25,000.00 / 25,000.01; negative, string, `null`, `1.5`, `"1e9"`, `"1,000.00"`, `" 51 "`, `"51.5"`; `formatCents(4305800)` = `$43,058.00` and `formatCents(100)` = `$1.00`; `progressPercent` with 0, partial and over-goal |
-| `apps/api/test/password.test.ts` | Unit | Hash then verify is true; a wrong password is false; two hashes of one password differ (salt); a malformed stored value is false, not a throw |
+| `apps/api/test/password.test.ts` | Unit | Hash then verify is true; a wrong password is false; two hashes of one password differ (salt). Parameters are read from the stored value: a hand-built cheap hash with non-default r/p verifies, and a key derived with other parameters than claimed is false. NFC and NFD forms of one password are equal. About 26 malformed variants, including a wrong key length, are false, not a throw. N = 2^30 is false in under 2 s |
 | `apps/api/test/read-seed.test.ts` | Unit, on the real files | 3 campaigns and 75 rows. Row 1's name is byte for byte `Shrestha, Bijay "BJ"`. Row 2's Devanagari is in NFC. Amounts are integers and row 3 is 2,500,000. The same CSV with LF and with CRLF gives identical records. A row with `"12.345"` fails naming its receipt number |
 | `apps/api/test/db/migration.test.ts` | Integration (Testcontainers `postgres:16-alpine`) | Raw inserts are rejected: amount 99 and 2,500,001, a duplicate receipt, an unknown status, a non-import message of 281 code points, a non-import dedication type without a name, an unknown campaign, an email differing only in case. 280 emoji is accepted (code points, A12). `int8` comes back as a `number`; an unsafe one throws. `int8[]` comes back as `number[]`; an unsafe element throws. A typed round-trip through `db` (campaigns, donors, donations: `preset_cents`, nullable and `Generated` columns) matches the `Database` types. `receipt_number_seq` exists, checked in `pg_sequences` without `nextval`, so T5 still sees 76 |
 | `apps/api/test/db/seed.test.ts` | Integration | Counts 75 / 66-7-2 / 48-15-12. Aangan `SUM(amount_cents)::bigint` = the number 4305800. Rows 11 and 12 belong to one donor. 3 accounts with roles and verifiable passwords; everyone else's hash is null. A second `runSeed` changes no row count and no hash. A donation inserted between runs survives. The next sequence value is 76 |
