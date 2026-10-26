@@ -30,7 +30,7 @@ fix → tick here → diff summary, decisions and commit message → Matheus say
   - Done: green. The stored format carries its parameters. A malformed hash returns false.
   - Commit: `feat(api): hash passwords with scrypt`
 
-- [ ] **T4 — Seed reader**
+- [x] **T4 — Seed reader**
   - Files: `apps/api/src/db/seed/read-seed.ts`, `apps/api/test/read-seed.test.ts`
   - Test first: `read-seed.test.ts`. It runs on the real seed files, plus an LF copy and a
     CRLF copy.
@@ -138,3 +138,29 @@ T1 comes first: T4 parses dollars with it. T2 comes before T5 (schema) and T3 be
       memory limit of at least 1 GiB, or decide on a small semaphore or
       `UV_THREADPOOL_SIZE`.
     - The dummy-hash comparison for unknown emails stays in 005.
+- T4, done. Test-first: red because the module was missing.
+  - Two checks were added during implementation, and tech spec §5 and §9 were updated
+    after the code, against the spec-first rule: an unknown campaign slug and a duplicate
+    receipt number fail the file. The PII-free error handling (`csv-parse` code only, no
+    Zod messages) was written down at the same time.
+  - The test-writer asserted row 14 = 280 code points from the README; it had read only 20
+    rows. The file has 283 (A1), so the test was corrected, not the parser.
+  - Four deliberate mutations each failed exactly the intended test: no NFC, no
+    lower-casing, the donor name added to an error message, the duplicate check off.
+  - Review: no blockers. The fixes below went into the code first; tech spec §5 and §9
+    were updated after it, against the spec-first rule.
+    - Major (fixed): the receipt number was echoed unvalidated into the error message, a
+      PII path if columns shift; the unknown-key test asserted only `.toThrow()`.
+    - Minor (fixed): empty-file rejection, duplicate campaign slug, currency format, the
+      error code asserted for malformed CSV, many untested paths pinned.
+    - Mutations on the new checks: receipt format off → 4 failures, empty-file check off
+      → 2, duplicate-slug check off → 1.
+    - Accepted, not fixed:
+      - a duplicate CSV header name is collapsed by `csv-parse` to the last column. The
+        seed is immutable and a duplicated header is a malformed file;
+      - whitespace-only values pass `min(1)`, and `parseDollarsToCents` trims (by design,
+        shared T1);
+      - no check that min ≤ max or `endsAt` ≥ `startsAt` on campaigns. The database check
+        constraint rejects min/max, and the seed is fixed;
+      - quoted newlines are kept as in the file, so CRLF and LF files give different
+        message text. The real seed has none.

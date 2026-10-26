@@ -125,15 +125,38 @@ builder plus `sql` fragments for `CHECK`s and extensions. The details that matte
 `read-seed.ts` is pure: it takes file contents, never touches the database, and is
 unit-tested.
 
-- `campaigns.json` is parsed with a strict Zod schema.
+- `campaigns.json` is parsed with a `.strict()` Zod schema: an unknown key fails. The
+  currency must be three upper-case letters. A duplicate slug fails, for the same
+  `ON CONFLICT DO NOTHING` reason as a duplicate receipt (below).
 - `donations.csv` is parsed with `csv-parse`:
   - RFC 4180, `columns: true`, with auto-detected line endings (CRLF and LF);
-  - `bom: true`, `trim: false`.
+  - `bom: true`, `trim: false`;
+  - the header is checked by a `.strict()` schema: an unknown column fails;
+  - an empty or header-only file fails ("no rows"), so a failed COPY cannot look like a
+    successful seed.
 - Each row is validated with Zod:
+  - `receipt_number` first, against `/^HCC-\d{4}-\d{6}$/`, before the value appears in
+    any error message. A row whose receipt cell fails is named `row at position N`, with
+    `SeedError.receiptNumber` null: a shifted column could otherwise put a name or email
+    in the message;
   - amounts through `parseDollarsToCents` (a row that fails stops the seed and names its
     receipt number);
-  - enums checked, `created_at` parsed as ISO UTC.
+  - enums checked, `created_at` parsed as ISO UTC;
+  - blank `dedication_type`, `dedication_name` and `dedication_message` cells become
+    `null`. The `SeedDonation.message` field comes from `dedication_message`.
+- Across rows, `parseSeed` fails on a `campaign_slug` absent from `campaigns.json` and on a
+  duplicate `receipt_number`. The database would silently skip the second row under
+  `ON CONFLICT DO NOTHING`, so the file must fail instead.
 - All text is NFC-normalised. Emails are NFC and lower-cased.
+- Two seed rows break the documented rules and are kept as they are (assumption A1):
+  - row 71 has a dedication type without a name: accepted;
+  - row 14's message is 283 code points, above the documented 280: kept whole, because
+    truncation would destroy data and the import exemption admits it.
+
+**Errors leak no PII.** A failure throws a `SeedError` that names a validated receipt
+number (or the row position) and the field names only. Zod messages are never used, since one may carry a value. `csv-parse`
+errors can quote the offending record, so they are caught and rethrown as a `SeedError`
+carrying only `csv-parse`'s error code.
 
 `runSeed(db)` runs in one transaction, in this order:
 
@@ -214,7 +237,7 @@ locking is needed beyond the unique constraints.
 |---|---|---|
 | `packages/shared/test/money.test.ts` | Unit | **M8 money:** the boundaries 0.99 / 1.00 / 25,000.00 / 25,000.01; negative, string, `null`, `1.5`, `"1e9"`, `"1,000.00"`, `" 51 "`, `"51.5"`; `formatCents(4305800)` = `$43,058.00` and `formatCents(100)` = `$1.00`; `progressPercent` with 0, partial and over-goal |
 | `apps/api/test/password.test.ts` | Unit | Hash then verify is true; a wrong password is false; two hashes of one password differ (salt). Parameters are read from the stored value: a hand-built cheap hash with non-default r/p verifies, and a key derived with other parameters than claimed is false. NFC and NFD forms of one password are equal. About 26 malformed variants, including a wrong key length, are false, not a throw. N = 2^30 is false in under 2 s |
-| `apps/api/test/read-seed.test.ts` | Unit, on the real files | 3 campaigns and 75 rows. Row 1's name is byte for byte `Shrestha, Bijay "BJ"`. Row 2's Devanagari is in NFC. Amounts are integers and row 3 is 2,500,000. The same CSV with LF and with CRLF gives identical records. A row with `"12.345"` fails naming its receipt number |
+| `apps/api/test/read-seed.test.ts` | Unit, on the real files | 3 campaigns and 75 rows. Row 1's name is byte for byte `Shrestha, Bijay "BJ"`. Row 2's Devanagari is in NFC. Amounts are integers and row 3 is 2,500,000. Row 1's message is read from `dedication_message`. Row 14's message is whole at 283 code points; row 71 (type, no name) is accepted. The same CSV with LF, with CRLF and with a BOM gives identical records. Decomposed text comes out in NFC. Each bad input is edited from a valid row: amount `12.345`, an unknown status, an unknown privacy mode, an unknown campaign slug, a duplicate receipt number, a bad `created_at`, an unbalanced quote, an extra JSON key. Each throws a `SeedError` that names the receipt number and contains no name, email or message text. A receipt cell holding an email is not echoed: the position is named and `receiptNumber` is null. Rejected: a receipt with a trailing space, in lower case or with too few digits; a bad email; a calendar date that does not exist (`2026-02-30`, not rolled over); a row with an extra column and an unknown header column, reporting only the `csv-parse` code; an empty and a header-only file. `campaigns.json`: an unknown key, invalid JSON, a duplicate slug and a lower-case currency are rejected |
 | `apps/api/test/db/migration.test.ts` | Integration (Testcontainers `postgres:16-alpine`) | Raw inserts are rejected: amount 99 and 2,500,001, a duplicate receipt, an unknown status, a non-import message of 281 code points, a non-import dedication type without a name, an unknown campaign, an email differing only in case. 280 emoji is accepted (code points, A12). `int8` comes back as a `number`; an unsafe one throws. `int8[]` comes back as `number[]`; an unsafe element throws. A typed round-trip through `db` (campaigns, donors, donations: `preset_cents`, nullable and `Generated` columns) matches the `Database` types. `receipt_number_seq` exists, checked in `pg_sequences` without `nextval`, so T5 still sees 76 |
 | `apps/api/test/db/seed.test.ts` | Integration | Counts 75 / 66-7-2 / 48-15-12. Aangan `SUM(amount_cents)::bigint` = the number 4305800. Rows 11 and 12 belong to one donor. 3 accounts with roles and verifiable passwords; everyone else's hash is null. A second `runSeed` changes no row count and no hash. A donation inserted between runs survives. The next sequence value is 76 |
 
