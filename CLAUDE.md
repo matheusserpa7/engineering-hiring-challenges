@@ -45,6 +45,12 @@ Proportionality: for trivial changes (typo, one-line config tweak, renaming), us
 - Commits: Conventional Commits, subject ≤ 60 characters, a body that says *why* when it
   earns one, and `Refs: spec-NNN/Tn` as the last line. One task per commit. Never push
   unless asked.
+- Stage by explicit path, never `git add .` or `git add -A`. Never commit a file you didn't
+  create in this task, such as another tool's config: report it to the user instead. Never
+  delete such a file unless the user asks.
+- Machine-specific gotchas (npm through `cmd.exe`, PowerShell piping, CRLF working copies)
+  are listed in `docs/PROGRESS.md` under *Environment notes*. Read them before installing
+  anything.
 
 ## Commands
 
