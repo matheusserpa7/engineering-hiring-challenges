@@ -190,6 +190,7 @@ Vite + Vue 3 + TS. `App.vue` renders the product name and an API status line fro
 | `apps/api/test/errors.test.ts` | Supertest | Unknown route → 404 `not_found` envelope. A throwing route, sync and async → 500 `internal_error` whose body contains neither the error message nor `at ` stack frames, while the log does contain the detail. Malformed JSON → 400. A body over 16 kB → 413. An unsupported charset → 415 `bad_request`, not 500 |
 | `apps/api/test/logging.test.ts` | Supertest + captured logger | `Cookie` and `Authorization` values never reach the request log |
 | `apps/api/test/config.test.ts` | Vitest | A missing or invalid variable fails with its name and never its value (a password in `DATABASE_URL` stays out of the message) |
+| `apps/web/test/api.test.ts` | Vitest, `fetch` stubbed | `getJson` returns the body on 2xx and `undefined` on 204. On an API error it throws `ApiError` carrying the envelope's code and message. On a non-envelope error (an HTML 502 from a proxy), or a 2xx that isn't JSON (a mis-routed `index.html`), it throws a generic `unexpected_response` and never shows the raw body |
 | `packages/shared/test/errors.test.ts` | Vitest | `isApiErrorBody` accepts the envelope and rejects near-misses (missing code, string body, null) |
 | Lint guard check | Manual, at T2 | A scratch file using `parseFloat` / `toFixed` / `v-html` fails lint. Deleted, not committed |
 | Hook check | Manual, at T5 | Editing a file to add a type error makes the hook report it |

@@ -55,8 +55,13 @@ put the agent rules in place before the code they govern. Budget: about 1 h 15 i
     `/api/health`. Missing env vars fail fast with the variable's name, not its value.
   - Commit: `feat(api): add the Express skeleton with a health check`
 
-- [ ] **T8 — Web skeleton**
-  - Files: `apps/web/{package.json,tsconfig.json,vite.config.ts,index.html,src/{main.ts,App.vue,api.ts},README.md}`
+- [x] **T8 — Web skeleton**
+  - Files: `apps/web/{package.json,tsconfig.json,vite.config.ts,index.html,src/{main.ts,App.vue,api.ts,env.d.ts},test/api.test.ts,README.md}`,
+    plus the root `dev` script (`concurrently`) and shared's `dev` (`tsc --watch`), since
+    T8 adds the last workspace it runs
+  - Test first: `getJson` returns the parsed body on 2xx, and `undefined` for an empty
+    one. It throws `ApiError` with the envelope's code on an API error, and a generic
+    `unexpected_response` on anything else, including a 2xx whose body isn't JSON.
   - Done: `build` and `typecheck` (vue-tsc) pass. In dev, the page shows "API: ok" through
     the Vite proxy. `isApiErrorBody` is imported from shared.
   - Commit: `feat(web): add the Vue skeleton that reads API health`
@@ -188,3 +193,29 @@ put the agent rules in place before the code they govern. Budget: about 1 h 15 i
         leave unset variables out: T9.
       - The undecodable URL parameter case gets its own test once routes have parameters:
         spec 002.
+- T8, done. Test-first `api.test.ts` (red: module missing), now 5 green. vue-tsc, build
+  and lint pass.
+  - Manual check:
+    - With the API and Vite running, curl through the proxy gets 200, and headless Edge
+      (JavaScript executed) renders "API: ok".
+    - With the database stopped, it renders "API: unavailable".
+    - Root `npm run dev` starts all three in about 2 s and renders "API: ok".
+  - `src/env.d.ts`: plain TypeScript, which type-aware lint uses, can't read `.vue`.
+    vue-tsc still checks the real component types; the review confirmed that a wrong prop
+    type is still caught.
+  - Review: 1 major, 5 minors, all fixed (tech spec §8 and this task updated first).
+    - Major: tech spec §1 and `CLAUDE.md` promised a root `npm run dev`, but no task added
+      it. It's added here, with `concurrently` and shared's `tsc --watch`.
+    - Minors:
+      - A 2xx that isn't JSON counted as success, so a mis-routed `index.html` would have
+        shown "API: ok". It's now `unexpected_response`; test-first, it was red.
+      - Tests added for the 204 case and the non-JSON 2xx.
+      - The README now says a network failure is fetch's `TypeError`.
+      - The page title used an organisation name that isn't in the brief.
+      - Removed the unused `jsx` option.
+  - Forward notes:
+    - T9: Vite inlines assets under 4 kB as `data:` URLs, which `default-src 'self'`
+      blocks. Set `build.assetsInlineLimit: 0`, or allow `img-src data:`, when the first
+      asset arrives.
+    - Spec 005: the Vite proxy doesn't rewrite `Origin`, so the `Origin` allow-list needs
+      `http://localhost:5173` in dev.
