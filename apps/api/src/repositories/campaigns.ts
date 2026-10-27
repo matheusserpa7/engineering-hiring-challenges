@@ -34,3 +34,9 @@ export function findCampaignWithTotals(db: Kysely<Database>, slug: string) {
     .groupBy('c.id')
     .executeTakeFirst();
 }
+
+// The list needs only the id. The id found here is still the
+// campaign's when the list query runs a moment later (no route deletes a campaign).
+export function findCampaignId(db: Kysely<Database>, slug: string) {
+  return db.selectFrom('campaigns').select('id').where('slug', '=', slug).executeTakeFirst();
+}

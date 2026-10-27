@@ -21,7 +21,9 @@ being dropped".
 - No serialiser change can leak PII, because the PII never leaves the database on the
   public path.
 - A foreign record looks exactly like a missing one.
-- The surname rule (last word of the name) is a known, documented approximation.
+- The surname rule is a known, documented approximation. Spec 003 (C1) refines it: with a comma
+  the surname is the last word before it, and a one-word name shows "Anonymous" because it
+  could be the given name.
 
 ## Alternatives
 - Strip fields in a serialiser: one refactor from a leak.

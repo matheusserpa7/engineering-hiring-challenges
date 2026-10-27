@@ -145,7 +145,7 @@ against [`RUBRIC.md`](../../../roles/full-stack-engineer/RUBRIC.md).
 | A2 | `donorCount` = distinct donors with a completed donation (Aangan: 46). | "Donor count" names people, not gifts. | Q4 |
 | A3 | Anonymous donations also withhold the dedication and message from the public payload (`null`, as in the API example). Identifying fields stay absent. | A dedication line can identify the donor. | Q5 |
 | A4 | Emails are case-insensitive: rows 11 and 12 are one donor. | A donor gives from three devices (DATA-MODEL). | — |
-| A5 | Family display name = "The {last word of the NFC name} family". | No surname column in the seed. A known limitation. | — |
+| A5 | Family display name = "The {last word of the NFC name} family". **Refined by [spec 003, C1](../003-public-campaign/techspec.md#33-display-name-c1):** a comma means the last word before it, and a one-word name shows "Anonymous". | No surname column in the seed. A known limitation. | — |
 | A6 | "Recent" = the latest N completed donations (default 20, max 50). | A time window can be empty on a quiet day. | — |
 | A7 | The $25,000 cap is per donation, as written. Per-campaign limits from `campaigns.json` apply within the global $1–$25,000 envelope. | Spec wording; per-day limits are a rate-limit concern. | — |
 | A8 | Inactive or ended campaigns reject new donations (422 `campaign_closed`). | A closed campaign is closed. | Q3 |

@@ -33,7 +33,7 @@ cut.
   - Commit: `feat(api): serve a campaign with its derived totals`
   - Depends on: T1
 
-- [ ] **T3 — API: the public donation list, privacy in the query** (~35 min)
+- [x] **T3 — API: the public donation list, privacy in the query** (~35 min)
   - Files: `apps/api/src/{repositories/public-donations.ts,services/campaigns.ts,http/campaigns.ts,http/validate.ts}`,
     `apps/api/test/db/public-donations.test.ts`; `docs/adr/0005-privacy-and-authz-in-sql.md`
     and `docs/specs/000-overview/prd.md` (A5): one line each pointing to C1
@@ -125,3 +125,15 @@ after T4, T6 after T5. T7 last.
     inserts moved inside the `try`, synthetic slugs are `test-*`, a connection timeout on
     the never-connecting pool.
   - Also changed: `logging.test.ts` passes a `db` to `createApp`, like `errors` and `health`.
+- T3, done. Test-first: red because the repository module was missing (API 186 → 247).
+  - Six breaks each failed the intended tests: an anonymous name shown, an anonymous message
+    shown, no `id desc` tie-break, the one-word family rule, an anonymous dedication shown, no
+    status filter.
+  - Review: no blockers; the seed data leaks nothing. One major, fixed: a no-break space or
+    zero-width space inside a surname made the regex return the whole name (`Dr Maya<nbsp>Gurung`
+    → "The Maya Gurung family"); they are separators now, with tests for each. Also fixed: a blank
+    public name shows Anonymous, the half-filled public dedication is pinned, comments corrected.
+  - Accepted, documented in §3.3: with no surname column `Maya, Gurung` and `Dr. Maya` show
+    "Maya" (A5), pinned as known limits. Spec 004 must normalise whitespace in names at intake.
+  - The `Aama` dedication appears in the payload legitimately (row 1 is public); the check that
+    matters is by id: row 13's item has a null dedication.

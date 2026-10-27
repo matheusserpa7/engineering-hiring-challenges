@@ -1,7 +1,13 @@
-import { progressPercent, type CampaignPhase, type PublicCampaign } from '@aangan/shared';
+import {
+  progressPercent,
+  type CampaignPhase,
+  type PublicCampaign,
+  type PublicDonation,
+} from '@aangan/shared';
 import type { Kysely } from 'kysely';
 import type { Database } from '../db/database.js';
-import { findCampaignWithTotals } from '../repositories/campaigns.js';
+import { findCampaignId, findCampaignWithTotals } from '../repositories/campaigns.js';
+import { listPublicDonations } from '../repositories/public-donations.js';
 
 export interface CampaignDeps {
   db: Kysely<Database>;
@@ -50,4 +56,29 @@ export async function getPublicCampaign(
     startsAt: row.starts_at?.toISOString() ?? null,
     endsAt: row.ends_at?.toISOString() ?? null,
   };
+}
+
+// null means the campaign does not exist. The privacy rules are already applied by the query;
+// this only reshapes a flat row into the DTO.
+export async function listRecentDonations(
+  { db }: CampaignDeps,
+  slug: string,
+  limit: number,
+): Promise<PublicDonation[] | null> {
+  const campaign = await findCampaignId(db, slug);
+  if (!campaign) return null;
+
+  const rows = await listPublicDonations(db, campaign.id, limit);
+  return rows.map((row) => ({
+    id: row.id,
+    displayName: row.display_name,
+    amountCents: row.amount_cents,
+    // The query already nulls an incomplete dedication; this check is for the types only.
+    dedication:
+      row.dedication_type && row.dedication_name
+        ? { type: row.dedication_type, name: row.dedication_name }
+        : null,
+    message: row.message,
+    createdAt: row.created_at.toISOString(),
+  }));
 }

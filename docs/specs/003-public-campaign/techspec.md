@@ -179,7 +179,12 @@ inserting rows.
 | `  Maya   Gurung  ` / `Maya\tGurung` | The Gurung family | Untrimmed seed input, tabs |
 | `Other Donor` (seed row 23) | The Donor family | The rule applied literally |
 | `Maya` | Anonymous | One word could be a given name (C1) |
-| `, Maya` / ` ` | Anonymous | No surname to derive |
+| `, Maya` / `,` / ` ` | Anonymous | No surname to derive |
+| "Dr Maya" + U+00A0 + "Gurung"; U+200B, U+202F and U+FEFF in the same place | The Gurung family | Postgres does not call these whitespace; they are treated as separators first, or the whole name came out |
+| `Maya, Gurung`, `Maya,Gurung`, `Dr. Maya` | The Maya family | **Known limit (A5):** no surname column, so the rule cannot know a title or that a comma means "given, surname" |
+| public with a blank name | Anonymous | The page never gets an empty name |
+
+The separator list can never be complete, so spec 004 must also normalise whitespace in names at intake.
 
 Rejected: deriving the surname in TypeScript. It needs the full name in the API process,
 one serialiser change from a leak (ADR 0005).
