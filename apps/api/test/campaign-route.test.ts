@@ -3,6 +3,7 @@ import { describe, expect, it } from 'vitest';
 import { createApp } from '../src/app.js';
 import { createLogger } from '../src/logger.js';
 import { neverConnectingDb } from './never-connecting-db.js';
+import { testIntake } from './intake.js';
 
 // The database here refuses every connection, so what a request returns shows whether it
 // reached a query. That makes the order "validate the slug, then query" observable without
@@ -12,6 +13,7 @@ const app = createApp({
   logger: createLogger('silent'),
   pingDb: () => Promise.resolve(),
   db: neverConnectingDb(),
+  intake: testIntake,
 });
 
 describe('GET /api/campaigns/:slug validates the slug before it queries', () => {

@@ -7,6 +7,16 @@ import { z } from 'zod';
 // working directory, which is apps/api under `npm -w` and the repo root otherwise.
 const REPO_ROOT = resolve(dirname(fileURLToPath(import.meta.url)), '../../..');
 
+// Intl is the authority on zone names, so a typo fails at boot instead of on the first receipt.
+function isTimeZone(value: string): boolean {
+  try {
+    new Intl.DateTimeFormat('en-US', { timeZone: value });
+    return true;
+  } catch {
+    return false;
+  }
+}
+
 const EnvSchema = z.object({
   PORT: z.coerce.number().int().min(1).max(65_535).default(4000),
   LOG_LEVEL: z.enum(['fatal', 'error', 'warn', 'info', 'debug', 'trace', 'silent']).default('info'),
@@ -17,6 +27,12 @@ const EnvSchema = z.object({
     .min(1)
     .default('roles/full-stack-engineer/seed')
     .transform((dir) => resolve(REPO_ROOT, dir)),
+  // The one place the organisation's zone is read: it decides the year printed on a receipt.
+  ORG_TIMEZONE: z.string().refine(isTimeZone).default('America/Chicago'),
+  // One deadline for a charge and its retry. Past it the donor is told the outcome is unknown.
+  PAYMENT_TIMEOUT_MS: z.coerce.number().int().min(100).max(60_000).default(5000),
+  // Simulated provider latency; tests and demos set it to 0.
+  PAYMENT_MOCK_LATENCY_MS: z.coerce.number().int().min(0).max(10_000).default(250),
 });
 
 export type Config = z.infer<typeof EnvSchema>;

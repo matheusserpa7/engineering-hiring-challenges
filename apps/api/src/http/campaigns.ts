@@ -10,7 +10,7 @@ import {
   type CampaignDeps,
 } from '../services/campaigns.js';
 import { AppError } from './errors.js';
-import { parseQuery } from './validate.js';
+import { parseInput } from './validate.js';
 
 // A slug that is malformed gets the same 404 as one that does not exist, so the response never
 // tells a caller which kind of mistake they made.
@@ -35,7 +35,11 @@ export function createCampaignRouter(deps: CampaignDeps): Router {
     // check reaches the database.
     const slug = CampaignSlugSchema.safeParse(req.params.slug);
     if (!slug.success) throw campaignNotFound();
-    const { limit = DEFAULT_RECENT_DONATIONS } = parseQuery(RecentDonationsQuerySchema, req.query);
+    const { limit = DEFAULT_RECENT_DONATIONS } = parseInput(
+      RecentDonationsQuerySchema,
+      req.query,
+      'query',
+    );
 
     const data = await listRecentDonations(deps, slug.data, limit);
     if (!data) throw campaignNotFound();

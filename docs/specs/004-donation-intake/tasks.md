@@ -29,7 +29,7 @@ replay in T4 → T9's POST smoke (moves to 006). T4 is never cut.
   - Commit: `feat(api): charge the mock provider with a deadline`
   - Depends on: —
 
-- [ ] **T3 — API: `POST /api/donations` outcomes** (~45 min) · reviewer: yes
+- [x] **T3 — API: `POST /api/donations` outcomes** (~45 min) · reviewer: yes
   - Files: `apps/api/src/{repositories/donations.ts,services/donations.ts,http/donations.ts,http/validate.ts,app.ts,start.ts,config.ts}`,
     `apps/api/test/{donation-helpers,config}.test.ts`, `apps/api/test/db/donations.test.ts`,
     `.env.example` (documented defaults, commented out)
@@ -124,3 +124,14 @@ T7 follows T6, T8 needs T7 and T4 (the 409 screen). T9 last.
     against the reference file. Differences from it: per-instance state (no `__reset`), the
     unknown-token message no longer echoes the token, the unreachable `default` branch is gone.
   - Added beyond the spec: after the deadline the abandoned attempt will not start a retry.
+- T3, done. Test-first: red because the service and the `intake` dependency were missing
+  (API 266 → 324). Four mutations each failed the intended test: no campaign max (Annadaan
+  500001), a truncated receipt number, a timeout marked `failed`, the request body logged.
+  - No `code-reviewer`: the user asked for a self-review of T2 and T3 together. Self-reviewed
+    against the `docs/07` table. Checked on compose: `tok_ok` gave `HCC-2026-000076` and the
+    total moved by 10100; `tok_timeout` answered 202 in 5.3 s.
+  - Differences from the task text: `createApp` takes one required `intake` group
+    (`payments`, `paymentTimeoutMs`, `orgTimezone`), so seven existing tests pass a shared
+    `test/intake.ts`; `DONATION_RATE_LIMIT` is added in T5 where it is read, not here.
+  - For T4: `recordOutcome` returning no row throws (a 500) for now; T4 answers it from the row.
+    An unwritable outcome answers 202 from the claimed row, proven with a trigger that fails UPDATE.

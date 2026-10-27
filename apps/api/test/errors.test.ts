@@ -6,11 +6,13 @@ import { createApp } from '../src/app.js';
 import { createErrorHandler } from '../src/http/errors.js';
 import { createLogger } from '../src/logger.js';
 import { neverConnectingDb } from './never-connecting-db.js';
+import { testIntake } from './intake.js';
 
 const app = createApp({
   logger: createLogger('silent'),
   pingDb: () => Promise.resolve(),
   db: neverConnectingDb(),
+  intake: testIntake,
 });
 
 describe('error responses', () => {
@@ -59,6 +61,7 @@ describe('error responses', () => {
       logger,
       pingDb: () => Promise.resolve(),
       db: neverConnectingDb(),
+      intake: testIntake,
     });
 
     const res = await request(logged).get('/api/campaigns/%E0%A4%A');

@@ -11,6 +11,7 @@ import { createPool } from '../../src/db/pool.js';
 import { loadSeed, runSeed } from '../../src/db/seed/seed.js';
 import { createLogger } from '../../src/logger.js';
 import { displayNameSql } from '../../src/repositories/public-donations.js';
+import { testIntake } from '../intake.js';
 
 const SEED_DIR = fileURLToPath(
   new URL('../../../../roles/full-stack-engineer/seed', import.meta.url),
@@ -33,7 +34,13 @@ beforeAll(async () => {
   );
   await pool.query('ALTER SEQUENCE receipt_number_seq RESTART');
   await runSeed(db, loadSeed(SEED_DIR));
-  app = createApp({ logger: createLogger('silent'), pingDb: () => Promise.resolve(), db, now });
+  app = createApp({
+    logger: createLogger('silent'),
+    pingDb: () => Promise.resolve(),
+    db,
+    now,
+    intake: testIntake,
+  });
 });
 
 afterAll(async () => {

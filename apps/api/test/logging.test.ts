@@ -3,11 +3,17 @@ import { expect, it } from 'vitest';
 import { createApp } from '../src/app.js';
 import { createLogger } from '../src/logger.js';
 import { neverConnectingDb } from './never-connecting-db.js';
+import { testIntake } from './intake.js';
 
 it('keeps cookies and credentials out of the request log', async () => {
   const lines: string[] = [];
   const logger = createLogger('info', { write: (line: string) => lines.push(line) });
-  const app = createApp({ logger, pingDb: () => Promise.resolve(), db: neverConnectingDb() });
+  const app = createApp({
+    logger,
+    pingDb: () => Promise.resolve(),
+    db: neverConnectingDb(),
+    intake: testIntake,
+  });
 
   await request(app)
     .get('/api/nope')

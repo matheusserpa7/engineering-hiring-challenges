@@ -25,7 +25,36 @@ describe('loadConfig', () => {
       LOG_LEVEL: 'info',
       DATABASE_URL: databaseUrl,
       SEED_DIR: resolve(repoRoot, 'roles/full-stack-engineer/seed'),
+      ORG_TIMEZONE: 'America/Chicago',
+      PAYMENT_TIMEOUT_MS: 5000,
+      PAYMENT_MOCK_LATENCY_MS: 250,
     });
+  });
+
+  it('reads the payment and time zone settings', () => {
+    const config = loadConfig({
+      DATABASE_URL: databaseUrl,
+      ORG_TIMEZONE: 'Asia/Kathmandu',
+      PAYMENT_TIMEOUT_MS: '800',
+      PAYMENT_MOCK_LATENCY_MS: '0',
+    });
+    expect(config).toMatchObject({
+      ORG_TIMEZONE: 'Asia/Kathmandu',
+      PAYMENT_TIMEOUT_MS: 800,
+      PAYMENT_MOCK_LATENCY_MS: 0,
+    });
+  });
+
+  it.each([
+    ['ORG_TIMEZONE', 'Mars/Olympus'],
+    ['ORG_TIMEZONE', ''],
+    ['PAYMENT_TIMEOUT_MS', '0'],
+    ['PAYMENT_TIMEOUT_MS', 'soon'],
+    ['PAYMENT_MOCK_LATENCY_MS', '-1'],
+  ])('fails boot on %s=%s and names the variable, not the value', (name, value) => {
+    const message = messageOf(() => loadConfig({ DATABASE_URL: databaseUrl, [name]: value }));
+    expect(message).toContain(name);
+    if (value !== '') expect(message).not.toContain(value);
   });
 
   // Relative values are joined to the repo root, like the default, so they mean the same folder

@@ -5,6 +5,7 @@ import { runMigrations } from './db/migrate.js';
 import { createPool, pingDb } from './db/pool.js';
 import { loadSeed, runSeed } from './db/seed/seed.js';
 import { createLogger } from './logger.js';
+import { createMockProvider } from './payments/mock-provider.js';
 
 const config = loadConfig();
 const logger = createLogger(config.LOG_LEVEL);
@@ -27,7 +28,16 @@ for (const [step, run] of startupSteps) {
   }
 }
 
-const app = createApp({ logger, pingDb: () => pingDb(pool), db });
+const app = createApp({
+  logger,
+  pingDb: () => pingDb(pool),
+  db,
+  intake: {
+    payments: createMockProvider({ latencyMs: config.PAYMENT_MOCK_LATENCY_MS }),
+    paymentTimeoutMs: config.PAYMENT_TIMEOUT_MS,
+    orgTimezone: config.ORG_TIMEZONE,
+  },
+});
 
 const server = app.listen(config.PORT, (error) => {
   if (error) {
