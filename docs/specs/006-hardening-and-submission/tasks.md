@@ -10,7 +10,7 @@ T1, T2, T4 + T5 on Chromium only, T7–T11, T13.
 T2's 413 → T3 (by hand in T11) → T6 (e2e stays local) → T5's `refund` spec.
 **Never cut:** T1, T2's 400, T7, T8, T9, T10, T11, T13 and the video.
 
-- [ ] **T1 — Lint: ban HTML injection** (~20 min) · self-review
+- [x] **T1 — Lint: ban HTML injection** (~20 min) · self-review
   - Files: `eslint.config.js`, `apps/web/test/lint-rules.test.ts`. Test: tech spec §2, red today.
   - Mutations: drop each new entry; drop the repeated money entries (the `toFixed` row goes red).
   - Done: repo lint clean. Commit: `build(lint): ban innerHTML in templates and code` · Depends: —
@@ -70,6 +70,10 @@ T2's 413 → T3 (by hand in T11) → T6 (e2e stays local) → T5's `refund` spec
 T1 → T4 → T5 → T6; T2 → T3 → T6; T2 → T7. T6 + T7 → T8 → T9 → T10 → T11 → T12 → T13.
 
 ## Notes recorded during execution
+
+**T1.** Red before the change (9 of 13 failed). Dropping the repeated money entries turns the
+`toFixed` row red. Self-review only; lint, format, typecheck and web tests (190) pass. The script
+ban covers `apps/web/src/**` only, so component tests can still read `innerHTML`.
 
 ## Optional (only with time left)
 

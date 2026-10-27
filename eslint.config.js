@@ -9,6 +9,14 @@ import tseslint from 'typescript-eslint';
 // formatting are the usual ways a rounding bug sneaks in, so lint bans them.
 const parseMessage = 'Money is integer minor units: parse with the shared money helpers.';
 const formatMessage = 'toFixed rounds floats: format money with the shared money helpers.';
+// Donor text is hostile. Vue's {{ }} escapes it, so the only way to run it is to ask for raw HTML.
+const htmlMessage = 'Raw HTML runs donor text as markup: render it with {{ }} or textContent.';
+
+const moneyProperties = [
+  { object: 'Number', property: 'parseFloat', message: parseMessage },
+  // No object given, so any receiver matches: x.toFixed, x['toFixed'], destructuring.
+  { property: 'toFixed', message: formatMessage },
+];
 
 const moneyRules = {
   'no-restricted-globals': [
@@ -19,12 +27,7 @@ const moneyRules = {
       checkGlobalObject: true,
     },
   ],
-  'no-restricted-properties': [
-    'error',
-    { object: 'Number', property: 'parseFloat', message: parseMessage },
-    // No object given, so any receiver matches: x.toFixed, x['toFixed'], destructuring.
-    { property: 'toFixed', message: formatMessage },
-  ],
+  'no-restricted-properties': ['error', ...moneyProperties],
 };
 
 // Core rules never see Vue template expressions, which is exactly where a price would
@@ -36,6 +39,9 @@ const templateMoneyRules = {
     { selector: "MemberExpression[property.value='parseFloat']", message: parseMessage },
     { selector: "MemberExpression[property.name='toFixed']", message: formatMessage },
     { selector: "MemberExpression[property.value='toFixed']", message: formatMessage },
+    // v-bind="{ innerHTML: m }" hides the property name from no-restricted-v-bind.
+    { selector: 'Property[key.name=/^(inner|outer)HTML$/]', message: htmlMessage },
+    { selector: 'Property[key.value=/^(inner|outer)HTML$/]', message: htmlMessage },
   ],
 };
 
@@ -72,10 +78,26 @@ export default defineConfig(
     rules: {
       ...templateMoneyRules,
       'vue/no-v-html': 'error',
+      'vue/no-restricted-v-bind': ['error', '/^(inner|outer)HTML$/'],
       // TypeScript already reports undefined names, and this rule has no browser globals here.
       // That holds only if every script block is TypeScript, so block-lang enforces it.
       'no-undef': 'off',
       'vue/block-lang': ['error', { script: { lang: 'ts' } }],
+    },
+  },
+  {
+    // Component tests may read innerHTML to assert escaping, so only the shipped source is
+    // covered. This block replaces the money entries for these files, so it repeats them.
+    files: ['apps/web/src/**/*.{ts,vue}'],
+    rules: {
+      'no-restricted-properties': [
+        'error',
+        ...moneyProperties,
+        { property: 'innerHTML', message: htmlMessage },
+        { property: 'outerHTML', message: htmlMessage },
+        { property: 'insertAdjacentHTML', message: htmlMessage },
+        { object: 'document', property: 'write', message: htmlMessage },
+      ],
     },
   },
   {
