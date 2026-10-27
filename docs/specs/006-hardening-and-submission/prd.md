@@ -48,8 +48,10 @@ Tests: e2e `e2e/{public,donate,refund,xss,session}.spec.ts`; web `test/lint-rule
 - **Given** receipts 9 and 10's message strings in the public list response, **when** the page
   renders, **then** both show as literal text, no `img[src="x"]` exists and no dialog opens, in
   Chromium and WebKit. *(xss › "public list")*
-- **Given** an admin searching `Magar`, then `Tamang`, **then** the table shows the same strings
-  as text and no dialog opens. *(xss › "admin table")*
+- **Given** an admin searching `Magar`, then `Tamang`, **then** both rows render and no dialog
+  opens; **and given** a gift whose donor name is `<img src=x onerror=alert(1)>`, **then** the
+  admin table and the public list show it as text. *(xss › "admin table", refund)* The admin
+  table has no message column, so the donor name is the hostile field it can show.
 - **Given** `:innerHTML`, `v-bind:innerHTML.prop`, `:outerHTML` or `v-bind="{ innerHTML }"` in a
   template, or web source setting `innerHTML`/`outerHTML` or calling `insertAdjacentHTML`/
   `document.write`, **then** lint errors; `{{ m }}`, `:title`, `textContent` pass and `toFixed`

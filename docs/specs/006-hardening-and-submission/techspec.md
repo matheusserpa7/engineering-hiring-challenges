@@ -108,9 +108,9 @@ lets a developer raise the limits. The `stack` job's timeout goes from 15 to 20 
 |---|---|---|
 | `public` | 375 × 667; open `/`; open the form | total text = `formatCents(raisedCents)`; `scrollWidth ≤ 375` both times |
 | `xss` › public list | `page.route` the list call: the real response plus receipts 9 and 10's message strings, copied from `donations.csv` | strings visible as text; `img[src="x"]` count 0 |
-| `xss` › admin table | UI login as admin; search `Magar`, then `Tamang` | same strings as text; no `img[src="x"]` |
+| `xss` › admin table | UI login as admin; search `Magar`, then `Tamang` | both rows render; no dialog, no CSP report |
 | `donate` | `$21` preset, name `E2E <browser> <ms>`, `tok_ok`, public | receipt `^HCC-\d{4}-\d{6,}$`; after reload the name is listed; API total +2,100 |
-| `refund` | donate as above; UI login as admin; search the name; refund with a reason | row `refunded`; API total back to its pre-gift value; name gone |
+| `refund` | donate as above with the name `<img src=x onerror=alert(1)> E2E <browser> <ms>`; UI login as admin; search the name; refund with a reason | name is text in the public list and the admin row (no `img[src="x"]`); row `refunded`; API total back to its pre-gift value; name gone from the list |
 | `session` | add cookie `aangan_session` = 43 random base64url chars; open `/me` | URL is `/login` |
 
 Receipts 9 and 10 are the 42nd and 43rd newest completed Aangan gifts, so the public page (latest

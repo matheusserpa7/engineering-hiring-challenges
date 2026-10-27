@@ -30,9 +30,9 @@ T2's 413 → T3 (by hand in T11) → T6 (e2e stays local) → T5's `refund` spec
     bypassed for the check), a 400 px fixed width; both reverted.
   - Done: green on both browsers; lint and typecheck cover `e2e/`. Commit: `test(e2e): add Playwright and public page checks`
   - Depends: T1
-- [ ] **T5 — E2E giving, refund, session, admin XSS** (~50 min) · self-review (server enforces)
+- [x] **T5 — E2E giving, refund, session, admin XSS** (~50 min) · self-review (server enforces)
   - Files: `e2e/{donate,refund,session}.spec.ts`, `e2e/xss.spec.ts` (admin case).
-  - Test: §5. Red: the refund form's submit removed; the admin message bound with `:innerHTML`.
+  - Test: §5. Red: the refund form's submit removed; the admin donor name bound with `:innerHTML` (lint bypassed; the table shows no message).
   - Done: both browsers green twice in a row on one stack; WebKit cookie outcome noted (G10).
   - Commit: `test(e2e): cover giving, refunds and sessions` · Depends: T4
 - [ ] **T6 — E2E in CI** (~25 min) · self-review
@@ -92,6 +92,15 @@ Zod's JIT probe is reported on every load (fixed: `apps/web/src/zod-config.ts`, 
 `z.config({ jitless: true })`; the spec's "no code change" line is amended in tech spec §5) and
 WebKit reports the progress bar's inline width as `style-src-attr` though it applies it (filtered
 in the fixture, width asserted instead; README Known issue). Self-review.
+
+**T5.** Red: the donor name rendered with `v-html` in the admin table fails `refund` and the admin
+`xss` case; the refund form without its submit handler fails `refund`; both reverted. Chromium
+10 green twice in a row on one stack (limits raised through compose for the debugging runs).
+**G10 applied:** WebKit stores the Secure cookie on `http://localhost` and never sends it back
+(`/api/auth/me` is 401 after a good login), so `refund` and the admin `xss` case are
+`test.fixme` on WebKit; README names `COOKIE_SECURE=false`. The admin table has no message
+column, so the planned admin message case became the donor-name case (PRD US-3, tech spec §5
+amended). Self-review.
 
 ## Optional (only with time left)
 
