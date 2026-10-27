@@ -19,7 +19,7 @@ replay in T4 → T9's POST smoke (moves to 006). T4 is never cut.
   - Commit: `feat(shared): add the donation request contract`
   - Depends on: —
 
-- [ ] **T2 — API: mock provider port and charge policy** (~20 min) · reviewer: yes (money)
+- [x] **T2 — API: mock provider port and charge policy** (~20 min) · reviewer: yes (money)
   - Files: `apps/api/src/payments/{mock-provider.ts,charge.ts}`,
     `apps/api/test/{mock-provider,charge}.test.ts`
   - Test first: §10 rows 2–3. Red: modules missing.
@@ -116,3 +116,11 @@ T7 follows T6, T8 needs T7 and T4 (the 409 screen). T9 last.
   - For T3: `requestHash` must treat an omitted `message`/`dedication` and `null` as equal, or one
     donor gets `idempotency_key_mismatch` for resending the same body. Names have no database
     length CHECK (only `message` does), so the 100 and 254 limits are API-only.
+- T2, done. Test-first: red because both modules were missing (API 247 → 266).
+  - Mutations each failed the intended test: retry with a new key, retry on a decline, no
+    `expired` guard (a retry after the 202), a deadline of twice the timeout. The test that
+    the shared deadline covers the retry is the one that catches the last.
+  - No `code-reviewer`: the user asked for a self-review of T2 and T3 together. Self-reviewed
+    against the reference file. Differences from it: per-instance state (no `__reset`), the
+    unknown-token message no longer echoes the token, the unreachable `default` branch is gone.
+  - Added beyond the spec: after the deadline the abandoned attempt will not start a retry.
