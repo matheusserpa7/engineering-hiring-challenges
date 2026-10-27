@@ -26,6 +26,10 @@ services:
       # dev, psql) reach it through localhost:${DB_PORT}.
       DATABASE_URL: postgres://${POSTGRES_USER:?copy .env.example to .env}:${POSTGRES_PASSWORD:?copy .env.example to .env}@db:5432/${POSTGRES_DB:?copy .env.example to .env}
       LOG_LEVEL: ${LOG_LEVEL:-info}
+      # The site is reached through nginx on WEB_PORT, as localhost or 127.0.0.1. A request that
+      # changes state from any other origin gets a 403.
+      ALLOWED_ORIGINS: http://localhost:${WEB_PORT:-3000},http://127.0.0.1:${WEB_PORT:-3000}
+      COOKIE_SECURE: ${COOKIE_SECURE:-true}
     depends_on:
       db:
         condition: service_healthy

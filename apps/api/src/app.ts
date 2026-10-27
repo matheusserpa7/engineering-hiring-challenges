@@ -1,13 +1,19 @@
 import express, { type Express } from 'express';
 import type { Kysely } from 'kysely';
 import { rateLimit } from 'express-rate-limit';
-import helmet from 'helmet';
 import { pinoHttp, stdSerializers } from 'pino-http';
 import type { Database } from './db/database.js';
 import { createCampaignRouter } from './http/campaigns.js';
 import { createDonationRouter } from './http/donations.js';
 import { createErrorHandler, errorBody, notFound } from './http/errors.js';
 import { createHealthHandler } from './http/health.js';
+import {
+  closedSecurity,
+  corsFor,
+  originCheck,
+  securityHeaders,
+  type SecuritySettings,
+} from './http/security.js';
 import type { Logger } from './logger.js';
 import type { IntakeSettings } from './services/donations.js';
 
@@ -19,6 +25,8 @@ export interface AppDeps {
   now?: () => Date;
   // The payment provider and the settings the donation intake runs with.
   intake: IntakeSettings;
+  // Origins and limits for the browser-facing routes. Omitted means closed: no origin allowed.
+  security?: SecuritySettings;
 }
 
 // Dependencies come in as arguments so tests can build the app with a failing database.
@@ -28,6 +36,7 @@ export function createApp({
   db,
   now = () => new Date(),
   intake,
+  security = closedSecurity,
 }: AppDeps): Express {
   const app = express();
 
@@ -61,7 +70,10 @@ export function createApp({
       },
     }),
   );
-  app.use(helmet());
+  app.use(securityHeaders);
+  app.use(corsFor(security.allowedOrigins));
+  // Before the limiters and the parser, so a forbidden origin costs nothing.
+  app.use(originCheck(security.allowedOrigins));
   // Ahead of the body parser, so a flood of malformed or oversized bodies is counted too.
   // In memory and per instance: it resets on restart, which one instance can live with.
   app.post(

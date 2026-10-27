@@ -38,6 +38,7 @@ const app = createApp({
     orgTimezone: config.ORG_TIMEZONE,
     donationRateLimit: config.DONATION_RATE_LIMIT,
   },
+  security: { allowedOrigins: config.ALLOWED_ORIGINS, loginRateLimit: config.LOGIN_RATE_LIMIT },
 });
 
 const server = app.listen(config.PORT, (error) => {

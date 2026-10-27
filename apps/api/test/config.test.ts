@@ -29,7 +29,43 @@ describe('loadConfig', () => {
       PAYMENT_TIMEOUT_MS: 5000,
       PAYMENT_MOCK_LATENCY_MS: 250,
       DONATION_RATE_LIMIT: 30,
+      ALLOWED_ORIGINS: [
+        'http://localhost:3000',
+        'http://127.0.0.1:3000',
+        'http://localhost:5173',
+        'http://127.0.0.1:5173',
+      ],
+      SESSION_TTL_HOURS: 8,
+      COOKIE_SECURE: true,
+      LOGIN_RATE_LIMIT: 10,
     });
+  });
+
+  it('reads the session and origin settings', () => {
+    const config = loadConfig({
+      DATABASE_URL: databaseUrl,
+      ALLOWED_ORIGINS: ' http://localhost:3000 , https://donate.example.org ',
+      SESSION_TTL_HOURS: '2',
+      COOKIE_SECURE: 'false',
+      LOGIN_RATE_LIMIT: '3',
+    });
+    expect(config).toMatchObject({
+      ALLOWED_ORIGINS: ['http://localhost:3000', 'https://donate.example.org'],
+      SESSION_TTL_HOURS: 2,
+      COOKIE_SECURE: false,
+      LOGIN_RATE_LIMIT: 3,
+    });
+  });
+
+  // z.coerce.boolean() turns the string "false" into true, which would silently keep the
+  // cookie Secure (or, the other way round, drop it).
+  it('reads COOKIE_SECURE=false as false and COOKIE_SECURE=true as true', () => {
+    expect(loadConfig({ DATABASE_URL: databaseUrl, COOKIE_SECURE: 'false' }).COOKIE_SECURE).toBe(
+      false,
+    );
+    expect(loadConfig({ DATABASE_URL: databaseUrl, COOKIE_SECURE: 'true' }).COOKIE_SECURE).toBe(
+      true,
+    );
   });
 
   it('reads the payment and time zone settings', () => {
@@ -55,6 +91,19 @@ describe('loadConfig', () => {
     ['PAYMENT_TIMEOUT_MS', 'soon'],
     ['PAYMENT_MOCK_LATENCY_MS', '-1'],
     ['DONATION_RATE_LIMIT', '0'],
+    ['COOKIE_SECURE', 'yes'],
+    ['COOKIE_SECURE', '0'],
+    ['COOKIE_SECURE', 'False'],
+    ['SESSION_TTL_HOURS', '0'],
+    ['SESSION_TTL_HOURS', '721'],
+    ['LOGIN_RATE_LIMIT', '0'],
+    ['ALLOWED_ORIGINS', ''],
+    ['ALLOWED_ORIGINS', 'http://localhost:3000/'],
+    ['ALLOWED_ORIGINS', 'http://localhost:3000/app'],
+    ['ALLOWED_ORIGINS', 'localhost:3000'],
+    ['ALLOWED_ORIGINS', 'ftp://localhost:3000'],
+    ['ALLOWED_ORIGINS', 'http://localhost:3000,not-an-origin'],
+    ['ALLOWED_ORIGINS', '*'],
   ])('fails boot on %s=%s and names the variable, not the value', (name, value) => {
     const message = messageOf(() => loadConfig({ DATABASE_URL: databaseUrl, [name]: value }));
     expect(message).toContain(name);

@@ -17,7 +17,7 @@ byte-identical one). T3, T4 and T6 are never cut.
   - Done: green; both apps build; 6 new error codes. Commit: `feat(shared): add the auth and admin contracts`
   - Depends on: —
 
-- [ ] **T2 — API: origins, CORS, CSP, new config** (~30 min) · reviewer: yes (CSRF)
+- [x] **T2 — API: origins, CORS, CSP, new config** (~30 min) · reviewer: yes (CSRF)
   - Files: `apps/api/src/{config.ts,app.ts,http/security.ts}`, `docker-compose.yml`,
     `.env.example`, `apps/api/package.json`, `package-lock.json` (`cors`),
     `apps/api/test/{security-middleware,config}.test.ts`
@@ -111,3 +111,9 @@ reason each fail a test. Review: the NFC test for `q` used a string that was alr
 `DONATION_STATUSES`. Accepted: `q` stays as `undefined` when blank, so callers test
 `q !== undefined`; `page` takes leading zeros (`'007'`), matching §5's regex. For T5/T9: the web
 client must not send empty `status`, `sort` or `dir` (422).
+
+**T2.** Reflecting any origin, allowing `Origin: null` and `z.coerce.boolean` each fail a test.
+On compose, `Origin: http://127.0.0.1:3000` gets 400 (passed the check) and `:3001` and `null` get
+403. Review: origin rows for a prefix, a trailing slash and upper case; CORS pinned to GET/POST and
+`Content-Type`/`Idempotency-Key`; `ALLOWED_ORIGINS` in `.env.example` is for `npm run dev` only.
+For T3: `loginRateLimit` and `SESSION_TTL_HOURS` are parsed but unused until the login lands.
