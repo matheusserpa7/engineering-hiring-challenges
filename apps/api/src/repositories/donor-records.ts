@@ -1,4 +1,4 @@
-import type { DonationDetail } from '@aangan/shared';
+import type { AdminDonation, AdminDonationQuery, DonationDetail } from '@aangan/shared';
 import { sql, type Kysely } from 'kysely';
 import type { Database } from '../db/database.js';
 
@@ -82,4 +82,81 @@ export async function listDonationsOf(
     .limit(MY_DONATIONS_LIMIT)
     .execute();
   return rows.map(toDonationDetail);
+}
+
+// Fixed map from the validated enum to a column: nothing from the request is spliced into SQL.
+const SORT_COLUMNS = {
+  createdAt: 'd.created_at',
+  amountCents: 'd.amount_cents',
+} as const;
+
+// The user's text is data, not a pattern: backslash, % and _ are escaped so '%' finds a percent sign
+// and not every row. The ESCAPE clause names the same backslash.
+const likePattern = (text: string) => `%${text.replace(/[\\%_]/g, (char) => `\\${char}`)}%`;
+
+interface AdminListArgs {
+  viewerId: string;
+  isAdmin: boolean;
+  query: AdminDonationQuery;
+}
+
+// The email match is a subquery, not a condition on the joined donors row: an OR across two
+// joined tables is a join filter, which no index serves. As a subquery it runs on donors alone.
+// `email::text`, not `email`: on citext, ILIKE picks citext's operator, which the (email::text)
+// trigram index cannot serve.
+function adminWhere({ viewerId, isAdmin, query }: AdminListArgs) {
+  const conditions = [visibleTo(viewerId, isAdmin)];
+  if (query.status !== undefined) conditions.push(sql<boolean>`d.status = ${query.status}`);
+  if (query.q !== undefined) {
+    const pattern = likePattern(query.q);
+    conditions.push(
+      sql<boolean>`(d.donor_name ilike ${pattern} escape '\\' or d.donor_id in (select id from donors where email::text ilike ${pattern} escape '\\'))`,
+    );
+  }
+  return sql<boolean>`${sql.join(conditions, sql` and `)}`;
+}
+
+// Exported so the test can EXPLAIN the exact statement.
+export function buildAdminDonationsQuery(db: Kysely<Database>, args: AdminListArgs) {
+  const { sort, dir, page, pageSize } = args.query;
+  return (
+    donationDetailQuery(db)
+      .innerJoin('donors as p', 'p.id', 'd.donor_id')
+      .select(['p.email as donor_email', 'd.failure_code'])
+      .where(adminWhere(args))
+      // d.id breaks ties, so two rows with one timestamp keep a fixed place and OFFSET pages
+      // never repeat or skip a row.
+      .orderBy(SORT_COLUMNS[sort], dir)
+      .orderBy('d.id', dir)
+      .limit(pageSize)
+      .offset((page - 1) * pageSize)
+  );
+}
+
+// The page and its count read one snapshot, so `total` and `data` agree even while donations
+// arrive. READ COMMITTED would let the second statement see rows the first did not.
+export async function listAdminDonationRows(
+  db: Kysely<Database>,
+  args: AdminListArgs,
+): Promise<{ rows: AdminDonation[]; total: number }> {
+  return db
+    .transaction()
+    .setIsolationLevel('repeatable read')
+    .setAccessMode('read only')
+    .execute(async (trx) => {
+      const rows = await buildAdminDonationsQuery(trx, args).execute();
+      const count = await trx
+        .selectFrom('donations as d')
+        .select(sql<number>`count(*)`.as('total'))
+        .where(adminWhere(args))
+        .executeTakeFirstOrThrow();
+      return {
+        rows: rows.map((row) => ({
+          ...toDonationDetail(row),
+          donorEmail: row.donor_email,
+          failureCode: row.failure_code,
+        })),
+        total: count.total,
+      };
+    });
 }

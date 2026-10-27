@@ -3,7 +3,7 @@ import type { Kysely } from 'kysely';
 import { rateLimit } from 'express-rate-limit';
 import { pinoHttp, stdSerializers } from 'pino-http';
 import type { Database } from './db/database.js';
-import { adminGuard } from './http/admin.js';
+import { adminGuard, createAdminRouter } from './http/admin.js';
 import { createAuthRouter } from './http/auth.js';
 import { createCampaignRouter } from './http/campaigns.js';
 import { createDonationRouter } from './http/donations.js';
@@ -115,6 +115,7 @@ export function createApp({
   app.use('/api', createDonationRouter({ db, now, ...intake }));
   app.use('/api', createAuthRouter({ db, auth }));
   app.use('/api', createMeRouter({ db, auth }));
+  app.use('/api/admin', createAdminRouter({ db, auth }));
 
   app.use(notFound);
   app.use(createErrorHandler(logger));

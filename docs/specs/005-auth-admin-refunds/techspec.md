@@ -111,14 +111,19 @@ absent, 1–100 code points, controls → 422 · `status` ∈ `pending|completed
 SELECT d.id, d.receipt_number, c.slug, c.title, d.donor_name, p.email, d.amount_cents, …
 FROM donations d JOIN donors p ON p.id = d.donor_id JOIN campaigns c ON c.id = d.campaign_id
 WHERE (d.donor_id = $viewer OR $isAdmin) [AND d.status = $status]
-  [AND (d.donor_name ILIKE $pattern ESCAPE '\' OR p.email::text ILIKE $pattern ESCAPE '\')]
+  [AND (d.donor_name ILIKE $pattern ESCAPE '\'
+        OR d.donor_id IN (SELECT id FROM donors WHERE email::text ILIKE $pattern ESCAPE '\'))]
 ORDER BY <SORT_COLUMNS[sort]> <dir>, d.id <dir> LIMIT $size OFFSET $offset
 ```
 
 - `$pattern = '%' + q with \ % _ backslash-escaped + '%'`, bound. `ILIKE` on Devanagari is a
   plain code-point match (no case to fold), and the input is NFC like the stored name.
-- **`p.email::text`**, not `p.email`: on `citext`, `ILIKE` picks citext's operator, which the
-  `(email::text) gin_trgm_ops` index cannot serve. A test proves the index is usable.
+- **`email::text`**, not `email`: on `citext`, `ILIKE` picks citext's operator, which the
+  `(email::text) gin_trgm_ops` index cannot serve. The email match is a subquery on `donors`, because
+  an `OR` across two joined tables is a join filter that no index serves. A test proves the email
+  arm uses `donors_email_trgm_idx`. **The name arm does not**: `OR` with the subquery keeps a
+  sequential scan on `donations` (T5 review), which is fine at this size. A `UNION` of two id sets
+  would let both arms use their index; do that if the table grows.
 - `SORT_COLUMNS = { createdAt: 'd.created_at', amountCents: 'd.amount_cents' }` as Kysely
   references; `dir` is the enum value. Nothing from the request is spliced. `d.id` breaks ties,
   so `OFFSET` pages never repeat or skip.
@@ -208,7 +213,7 @@ are the same site, so `SameSite=Strict` alone does not stop a page on another lo
 | `security-middleware.test.ts` | Unit (never-connecting db) | Origin evil / `null` → 403 on POST, absent → passes, GET unaffected; CSP header exact; CORS echoes a listed origin only; login limit+1 → 429 + `Retry-After` with the verifier spy never called; successes count too |
 | `db/auth.test.ts` | Integration (seeded) | US-1: cookie attributes; stored hash = SHA-256(token); three failures byte-identical; timing ratio (median of 3, unknown vs wrong); strict body; no password or token in captured logs; expired row, logged-out token, tampered cookie → 401 |
 | `db/authz.test.ts` | Integration | US-2: donor → other's id 404 equal to a random id's; `/me` = receipts 19–21; donor → admin list and refund 403, no row changed; no session → 401 on every route; admin reads any id; demoted admin → 403 next request |
-| `db/admin-donations.test.ts` | Integration | US-3: Devanagari NFC and NFD, email part, `%`/`_` literal; status 66/7/2 (+ a synthetic pending); sort and 422s; pageSize 10 → 75 unique ids; page 9 empty; viewer scope with a donor viewer; with `enable_seqscan = off`, `EXPLAIN` names `donors_email_trgm_idx` |
+| `db/admin-donations.test.ts` | Integration | US-3: Devanagari with a composition-excluded nukta letter (NFC differs from the typed form), an accent in NFD, email part, `%`/`_` literal; status 66/7/2 (+ a synthetic pending); sort and 422s; pageSize 10 → 75 unique ids; page 9 empty; viewer scope with a donor viewer; with `enable_seqscan = off`, `EXPLAIN` names `donors_email_trgm_idx` (the email arm only) |
 | `db/refunds.test.ts` | Integration | US-4: receipt 3 → total 1,805,800, donors 45, gone from public list, audit row; trigger-forced audit failure → 500, still `completed`; 20 parallel → 1×200, 19×409, 1 row; refusals 409/404/422 |
 | web `session`, `login-page`, `my-donations`, `admin-page` | Component (fetch stubbed at the network) | US-5 screens; guard sends no-session users to `/login`; XSS rows as text; refund 200 and 409 paths; search sends `q` without changing the URL |
 | CI stack job (T10) | Smoke, curl via nginx | Login sets the cookie; donor → other's id 404; donor → admin 403; admin search `गुरुङ` finds receipt 2 |
