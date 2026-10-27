@@ -41,3 +41,25 @@ Tests in the clone: shared 275, API 488, web 190, all passing.
 | Unicode | pass | `toLowerCase` only on emails (ASCII by schema); names use NFC and `ILIKE`. |
 | `any` / `console.` / narration / `TODO` | pass | zero hits in source and READMEs. |
 | Files over ~500 lines | pass | one: `apps/api/test/db/public-donations.test.ts` (518), a test file, left whole. |
+
+## QA run, the rest of the checklist (T11)
+
+`qa-verifier` on 2026-10-27 at `ee0f46e`, stack from `down -v` and `up --build --wait` (18 s with a
+warm cache; the 49 s cold figure above is T10's). **No failures.** Every item is pass or n/a.
+
+| Section | Result | Evidence |
+|---|---|---|
+| Seed data traps | pass | 75 rows (66 completed, 7 refunded, 2 failed); `raisedCents` 4305800, 46 donors, 28%; the percent-encoded `गुरुङ` search finds अनिशा गुरुङ; both XSS payloads render as text in the e2e on Chromium and WebKit |
+| Money | pass | 99 → 422, 100 → 201, 2500000 → 201, 2500001 → 422; -100, `"100"`, `null`, 1.5 → 422; no float column; no `parseFloat`/`toFixed`; the API only returns `*Cents` |
+| Security | pass | Donor reading `other@`'s donation → 404; donor on `/admin` → 403, anonymous → 401; cookie is 43 base64url characters, `HttpOnly; Secure; SameSite=Strict; Max-Age=28800`; `sort=amount;drop` → 422; public JSON has no `@`, donor id or email, 10 rows read "Anonymous" |
+| Correctness | pass | Refund: 200, audit row, total −2100, donors −1, repeat → 409 `already_refunded`; `tok_decline` → 402 in 0.47 s; `tok_timeout` → 202 `pending` in 5.2 s; 0% for an empty campaign is covered by unit tests (no empty campaign in the seed); 375 px by the e2e |
+| Tests | pass | 953 tests; `authz.test.ts`, `refunds.test.ts` and the money boundary tests exist; lint exit 0; CSV rows n/a (S0 not built) |
+| Documentation and history | pass | Root and package READMEs, `AI-USAGE.md`; 99 commits, none called final or wip |
+| Login timing | pass | Medians 0.444 s (unknown email) and 0.445 s (wrong password), identical 401 bodies |
+| 20 parallel gifts, one key, through nginx | pass | 1 × 201 and 19 × 409; 1 row for the key; `donation processed` 3 → 4 |
+| Forged and tampered cookies | pass | Random value, a real cookie with its last character changed, a prefixed value → 401 |
+| `npm run e2e` | pass | 12 tests: 10 passed, 2 skipped (WebKit sign-in, G10) |
+
+Partly checked by QA and covered elsewhere: session expiry and the two 429 limits (CI steps
+*Sessions* and *Rate limits*), nginx 400/413 byte equality with the API (CI step *nginx errors*),
+gitleaks (T7). The video link, the author's hours and the private-window look are the author's, in T13.
