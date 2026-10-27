@@ -47,77 +47,184 @@ watchEffect(() => {
 
   <NotFoundPage v-else-if="state.status === 'not-found'" />
 
-  <article v-else>
-    <h1>{{ state.campaign.title }}</h1>
-    <p v-if="state.campaign.story !== null" class="story">{{ state.campaign.story }}</p>
+  <article v-else class="campaign">
+    <div class="main-col">
+      <header class="intro">
+        <p class="eyebrow">Himalaya Cultural Centre</p>
+        <h1>{{ state.campaign.title }}</h1>
+      </header>
+      <p v-if="state.campaign.story !== null" class="story">{{ state.campaign.story }}</p>
 
-    <p v-if="state.campaign.phase === 'closed'" class="notice">
-      This campaign is closed and no longer accepts donations.
-    </p>
-    <p
-      v-else-if="state.campaign.phase === 'upcoming' && state.campaign.startsAt !== null"
-      class="notice"
-    >
-      Opens {{ formatCampaignDate(state.campaign.startsAt) }}
-    </p>
+      <p v-if="state.campaign.phase === 'closed'" class="alert warn">
+        This campaign is closed and no longer accepts donations.
+      </p>
+      <p
+        v-else-if="state.campaign.phase === 'upcoming' && state.campaign.startsAt !== null"
+        class="alert warn"
+      >
+        Opens {{ formatCampaignDate(state.campaign.startsAt) }}
+      </p>
 
-    <CampaignTotals :campaign="state.campaign" />
+      <ul class="trust">
+        <li>
+          <strong>A receipt number for every gift</strong>
+          Quote it if you call the office.
+        </li>
+        <li>
+          <strong>You choose how your name appears</strong>
+          Public, family or anonymous, applied by our server before anything is shown.
+        </li>
+        <li>
+          <strong>One gift, even if you press twice</strong>
+          A repeated request is recognised and never charged again.
+        </li>
+      </ul>
 
-    <p v-if="state.campaign.phase === 'open'">
-      <a href="#donate" class="donate-link">Donate</a>
-    </p>
+      <section
+        v-if="state.campaign.phase === 'open'"
+        id="donate"
+        class="card donate"
+        aria-labelledby="donate-heading"
+      >
+        <h2 id="donate-heading">Make a donation</h2>
+        <DonationResult
+          v-if="outcome !== null"
+          :outcome="outcome"
+          @resubmit="resubmit"
+          @dismiss="donation.reset"
+        />
+        <DonationForm
+          v-if="!gaveSuccessfully"
+          :campaign="state.campaign"
+          :busy="donation.state.value.status === 'submitting'"
+          @submit="give"
+        />
+      </section>
 
-    <section v-if="state.campaign.phase === 'open'" id="donate" aria-labelledby="donate-heading">
-      <h2 id="donate-heading">Make a donation</h2>
-      <DonationResult
-        v-if="outcome !== null"
-        :outcome="outcome"
-        @resubmit="resubmit"
-        @dismiss="donation.reset"
-      />
-      <DonationForm
-        v-if="!gaveSuccessfully"
-        :campaign="state.campaign"
-        :busy="donation.state.value.status === 'submitting'"
-        @submit="give"
-      />
-    </section>
+      <section class="card recent" aria-labelledby="recent-heading">
+        <h2 id="recent-heading">Recent donations</h2>
+        <DonationList :donations="state.donations" />
+      </section>
+    </div>
 
-    <section aria-labelledby="recent-heading">
-      <h2 id="recent-heading">Recent donations</h2>
-      <DonationList :donations="state.donations" />
-    </section>
+    <aside class="card give-card" aria-label="Campaign progress">
+      <CampaignTotals :campaign="state.campaign" />
+      <a v-if="state.campaign.phase === 'open'" href="#donate" class="btn primary lg donate-link">
+        Donate
+      </a>
+    </aside>
+
+    <a v-if="state.campaign.phase === 'open'" href="#donate" class="mobile-bar">
+      <span class="num">{{ state.campaign.progressPercent }}% of goal</span>
+      <span class="btn primary">Donate</span>
+    </a>
   </article>
 </template>
 
 <style scoped>
+.campaign {
+  display: grid;
+  grid-template-columns: minmax(0, 1fr) 380px;
+  gap: 2rem;
+  align-items: start;
+}
+
+.main-col {
+  display: flex;
+  flex-direction: column;
+  gap: 1.5rem;
+  min-width: 0;
+}
+
+.intro {
+  display: flex;
+  flex-direction: column;
+  gap: 0.5rem;
+}
+
 .story {
+  max-width: 64ch;
+  font-size: 1.05rem;
+  line-height: 1.65;
   overflow-wrap: anywhere;
   white-space: pre-line;
 }
 
-.notice {
-  padding: 0.75rem 1rem;
-  border-radius: 0.5rem;
-  background: #fef3c7;
-  color: #78350f;
+.trust {
+  display: grid;
+  grid-template-columns: repeat(3, minmax(0, 1fr));
+  gap: 1rem;
+  margin: 0;
+  padding: 0;
+  list-style: none;
+  font-size: 0.875rem;
+  color: var(--muted);
+}
+
+.trust strong {
+  display: block;
+  color: var(--ink);
+}
+
+.donate,
+.recent {
+  padding: 1.25rem;
+  scroll-margin-top: 5rem;
+}
+
+.give-card {
+  position: sticky;
+  top: 5rem;
+  display: flex;
+  flex-direction: column;
+  gap: 1rem;
+  padding: 1.5rem;
+  box-shadow: var(--shadow);
 }
 
 .donate-link {
-  display: inline-flex;
-  align-items: center;
-  min-height: 2.75rem;
-  padding: 0 1.25rem;
-  border-radius: 0.5rem;
-  background: #166534;
-  color: #fff;
-  font-weight: 600;
-  text-decoration: none;
+  width: 100%;
 }
 
-button {
-  min-height: 2.75rem;
-  padding: 0 1.25rem;
-  font: inherit;
+.mobile-bar {
+  display: none;
+}
+
+@media (max-width: 980px) {
+  .campaign {
+    grid-template-columns: minmax(0, 1fr);
+  }
+
+  .give-card {
+    position: static;
+    order: -1;
+  }
+}
+
+@media (max-width: 760px) {
+  .trust {
+    grid-template-columns: minmax(0, 1fr);
+  }
+
+  .donate-link {
+    display: none;
+  }
+
+  .mobile-bar {
+    position: fixed;
+    inset: auto 0 0;
+    z-index: 15;
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+    gap: 1rem;
+    padding: 0.6rem max(1rem, env(safe-area-inset-right, 0px))
+      calc(0.6rem + env(safe-area-inset-bottom, 0px)) max(1rem, env(safe-area-inset-left, 0px));
+    background: var(--surface);
+    border-top: 1px solid var(--line);
+    color: var(--ink);
+    font-weight: 600;
+    text-decoration: none;
+  }
 }
 </style>

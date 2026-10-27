@@ -45,17 +45,20 @@ const valueText = computed(
   flex: 1;
   height: 0.75rem;
   border-radius: 999px;
-  background: #e5e7eb;
+  background: var(--surface-2);
   overflow: hidden;
 }
 
 .fill {
   height: 100%;
-  background: #166534;
+  border-radius: 999px;
+  background: var(--marigold);
+  transition: width 0.8s cubic-bezier(0.2, 0.8, 0.2, 1);
 }
 
 .label {
-  font-weight: 600;
   min-width: 3ch;
+  font-weight: 700;
+  font-variant-numeric: tabular-nums;
 }
 </style>

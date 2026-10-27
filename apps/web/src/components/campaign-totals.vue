@@ -28,26 +28,31 @@ defineProps<{ campaign: PublicCampaign }>();
 </template>
 
 <style scoped>
+.totals {
+  display: flex;
+  flex-direction: column;
+  gap: 0.75rem;
+}
+
 .raised {
-  margin: 0 0 0.5rem;
-  font-size: 1.125rem;
+  margin: 0;
+  color: var(--muted);
 }
 
 .raised strong {
-  font-size: 1.5rem;
+  display: block;
+  margin-bottom: 0.25rem;
+  font-family: var(--font-display);
+  font-size: 2.4rem;
+  line-height: 1;
+  letter-spacing: -0.02em;
+  color: var(--ink);
+  font-variant-numeric: tabular-nums;
 }
 
 .meta {
-  margin: 0.5rem 0 0;
-  color: #374151;
-}
-
-.visually-hidden {
-  position: absolute;
-  width: 1px;
-  height: 1px;
-  overflow: hidden;
-  clip-path: inset(50%);
-  white-space: nowrap;
+  margin: 0;
+  color: var(--muted);
+  font-variant-numeric: tabular-nums;
 }
 </style>

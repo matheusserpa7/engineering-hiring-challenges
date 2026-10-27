@@ -28,3 +28,22 @@ test('the public page shows the real total and fits a phone', async ({ page, req
   await expect(page.getByRole('heading', { name: 'Make a donation' })).toBeVisible();
   expect(await scrollWidth()).toBeLessThanOrEqual(PHONE.width);
 });
+
+test('the give card stays in view on desktop', async ({ page }) => {
+  await page.setViewportSize({ width: 1280, height: 720 });
+  await page.goto('/');
+  const donate = page.getByRole('main').getByRole('link', { name: 'Donate' });
+  await expect(donate).toBeInViewport();
+
+  await page.mouse.wheel(0, 900);
+  await expect(donate).toBeInViewport();
+});
+
+test('Donate stays reachable on a phone', async ({ page }) => {
+  await page.setViewportSize(PHONE);
+  await page.goto('/');
+  await expect(page.getByRole('heading', { level: 1 })).toBeVisible();
+
+  await page.mouse.wheel(0, 2000);
+  await expect(page.getByRole('main').getByRole('link', { name: 'Donate' })).toBeInViewport();
+});
