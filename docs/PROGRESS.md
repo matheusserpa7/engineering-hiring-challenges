@@ -9,13 +9,13 @@ Last updated: 2026-10-27
 ## Resume here
 
 **Spec 006 is implemented (T1–T12 of 13) and QA found no failures. What is left is the author's:
-record the video, give the hours, then T13 (link the video, close this file) and the delivery steps.**
+record the video, then T13 (link the video, close this file) and the delivery steps.**
 
 1. Read [`CLAUDE.md`](../CLAUDE.md), then this file.
 2. CI is green on the pushed e2e job: [run 40549949249](https://github.com/matheusserpa7/engineering-hiring-challenges/actions/runs/40549949249)
    (spec 006 T6). The QA evidence is in [`specs/006-hardening-and-submission/checklist.md`](specs/006-hardening-and-submission/checklist.md).
 3. Before submitting, the author: confirms `AI-USAGE.md` (the tools, which changes were his own),
-   fills the *Time spent* line of the README, records the video from
+   records the video from
    [`video-outline.md`](specs/006-hardening-and-submission/video-outline.md), then T13. Open the video
    link and both URLs in a private window.
 4. Delivery: repo public (or `@sandesPathak` invited), `FirstName_LastName.zip` with `.git` and without
@@ -47,8 +47,7 @@ record the video, give the hours, then T13 (link the video, close this file) and
 ## Git state
 
 - Branch `main`, tracking `origin/main` on the user's fork. 
-- `origin/main` is at `0ab86e9` (spec 006 T9). The commits after it (T10 to T12 and this one) are local
-  until the user asks for a push.
+- `origin/main` is at `725b96a` (spec 006 up to the progress log), CI green.
 - `tasks.md` of spec 005 was overwritten by a script in the T3 commit and restored in the T6 commit;
   the history shows it. The T3 commit also changes decision F1 (login attempts all count).
 
@@ -134,8 +133,8 @@ From [spec 005's task notes](specs/005-auth-admin-refunds/tasks.md), for spec 00
 - **Clarification email** to the company: the five questions in
   [PRD 000 → Open questions](specs/000-overview/prd.md#open-questions-to-email). **Not
   yet sent.** Until answers arrive, assumptions A1–A12 in the PRD apply.
-- **Time spent:** not tracked here yet. The README and `AI-USAGE.md` need the user's own
-  figure.
+- **Time spent:** the user does not want hours in the repository; he sends his subscription usage
+  himself. The README has no time section.
 - **`AI-USAGE.md`** (spec 006) must name every AI tool used. If another agent continues the
   work, record which tool did which part.
 

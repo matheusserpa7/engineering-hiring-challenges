@@ -198,8 +198,3 @@ Fork, clone your fork, then follow *Run it*. CI (`.github/workflows/ci.yml`) run
 How the work was planned, with a PRD, tech spec and task list per step, is in
 [`docs/specs/`](docs/specs/), and where it stands is in [`docs/PROGRESS.md`](docs/PROGRESS.md).
 How AI was used is in [`AI-USAGE.md`](AI-USAGE.md).
-
-## Time spent
-
-The git history covers 2026-09-06 to 2026-10-27. The author's own figure for hours goes here
-before submitting.
