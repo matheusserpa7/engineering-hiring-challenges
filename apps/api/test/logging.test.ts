@@ -2,11 +2,12 @@ import request from 'supertest';
 import { expect, it } from 'vitest';
 import { createApp } from '../src/app.js';
 import { createLogger } from '../src/logger.js';
+import { neverConnectingDb } from './never-connecting-db.js';
 
 it('keeps cookies and credentials out of the request log', async () => {
   const lines: string[] = [];
   const logger = createLogger('info', { write: (line: string) => lines.push(line) });
-  const app = createApp({ logger, pingDb: () => Promise.resolve() });
+  const app = createApp({ logger, pingDb: () => Promise.resolve(), db: neverConnectingDb() });
 
   await request(app)
     .get('/api/nope')

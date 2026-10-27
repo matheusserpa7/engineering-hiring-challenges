@@ -20,7 +20,7 @@ cut.
   - Commit: `feat(shared): add the public campaign contract`
   - Depends on: —
 
-- [ ] **T2 — API: `GET /api/campaigns/:slug` with derived totals** (~30 min)
+- [x] **T2 — API: `GET /api/campaigns/:slug` with derived totals** (~30 min)
   - Files: `apps/api/src/{repositories/campaigns.ts,services/campaigns.ts,http/campaigns.ts,app.ts,start.ts}`,
     `apps/api/test/{campaign-phase.test.ts,errors.test.ts,health.test.ts}` (the last two
     pass a never-connecting `db` to `createApp`), `apps/api/test/db/campaign-api.test.ts`
@@ -115,3 +115,13 @@ after T4, T6 after T5. T7 last.
     edge cases (`null`, a number, `undefined`) and a `__proto__` key are pinned.
   - Accepted: `z.uuid()` rejects non-RFC ids, fine because every id comes from
     `gen_random_uuid()`.
+- T2, done. Test-first: red because the service and the route were missing (API 160 → 186).
+  - Nine breaks each failed the intended tests: status filter moved to the WHERE (only the
+    empty-campaign test), counting gifts instead of donors, no `::bigint`, either phase
+    boundary made exclusive, no `Cache-Control`, no slug validation, a constant ETag.
+  - Review: no blockers. One major, fixed: nothing made the slug check observable, so
+    `campaign-route.test.ts` (a db that never connects) now proves a malformed slug is a 404
+    that never reaches the pool. Also fixed: the ETag must change when the total changes,
+    inserts moved inside the `try`, synthetic slugs are `test-*`, a connection timeout on
+    the never-connecting pool.
+  - Also changed: `logging.test.ts` passes a `db` to `createApp`, like `errors` and `health`.

@@ -5,8 +5,13 @@ import { describe, expect, it } from 'vitest';
 import { createApp } from '../src/app.js';
 import { createErrorHandler } from '../src/http/errors.js';
 import { createLogger } from '../src/logger.js';
+import { neverConnectingDb } from './never-connecting-db.js';
 
-const app = createApp({ logger: createLogger('silent'), pingDb: () => Promise.resolve() });
+const app = createApp({
+  logger: createLogger('silent'),
+  pingDb: () => Promise.resolve(),
+  db: neverConnectingDb(),
+});
 
 describe('error responses', () => {
   it.each(['/api/nope', '/nope'])('answers 404 not_found for %s', async (path) => {
@@ -45,6 +50,27 @@ describe('error responses', () => {
 
     expect(res.status).toBe(415);
     expect(res.body).toMatchObject({ error: { code: 'bad_request' } });
+  });
+
+  it('answers 400 bad_request for a malformed percent-encoding without an error-level log', async () => {
+    const lines: string[] = [];
+    const logger = createLogger('error', { write: (line: string) => lines.push(line) });
+    const logged = createApp({
+      logger,
+      pingDb: () => Promise.resolve(),
+      db: neverConnectingDb(),
+    });
+
+    const res = await request(logged).get('/api/campaigns/%E0%A4%A');
+
+    expect(res.status).toBe(400);
+    expect(isApiErrorBody(res.body)).toBe(true);
+    expect(res.body).toMatchObject({ error: { code: 'bad_request' } });
+    expect(Object.keys((res.body as { error: object }).error).sort()).toEqual(['code', 'message']);
+    expect(res.text).not.toContain('%E0');
+    expect(res.text).not.toMatch(/node_modules|\.ts/);
+    // A client typo is not a server fault, so it must not page anyone.
+    expect(lines.join('')).toBe('');
   });
 
   const cause = new Error('password=hunter2 in /srv/app/db.ts');

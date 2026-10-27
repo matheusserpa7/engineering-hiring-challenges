@@ -27,7 +27,7 @@ for (const [step, run] of startupSteps) {
   }
 }
 
-const app = createApp({ logger, pingDb: () => pingDb(pool) });
+const app = createApp({ logger, pingDb: () => pingDb(pool), db });
 
 const server = app.listen(config.PORT, (error) => {
   if (error) {

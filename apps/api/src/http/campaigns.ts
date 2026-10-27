@@ -1,0 +1,22 @@
+import { CampaignSlugSchema } from '@aangan/shared';
+import { Router } from 'express';
+import { getPublicCampaign, type CampaignDeps } from '../services/campaigns.js';
+import { AppError } from './errors.js';
+
+// Public: no session is read. A slug that is malformed gets the same 404 as one that does not
+// exist, so the response never tells a caller which kind of mistake they made.
+export function createCampaignRouter(deps: CampaignDeps): Router {
+  const router = Router();
+
+  router.get('/campaigns/:slug', async (req, res) => {
+    const slug = CampaignSlugSchema.safeParse(req.params.slug);
+    const campaign = slug.success ? await getPublicCampaign(deps, slug.data) : null;
+    if (!campaign) throw new AppError(404, 'not_found', 'Campaign not found.');
+
+    // no-cache: the browser may keep a copy but must revalidate it, so a new donor sees their
+    // gift on the next read, and an unchanged page costs a 304 (Express adds the ETag).
+    res.set('Cache-Control', 'no-cache').json(campaign);
+  });
+
+  return router;
+}
