@@ -3,7 +3,7 @@
   "version": "0.0.0",
   "private": true,
   "type": "module",
-  "description": "The contract between the API and the web app: the error envelope and the money helpers",
+  "description": "The contract between the API and the web app: the error envelope, the money helpers and the public campaign shapes",
   "exports": {
     ".": {
       "types": "./dist/index.d.ts",

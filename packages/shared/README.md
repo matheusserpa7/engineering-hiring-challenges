@@ -30,7 +30,22 @@ And the money helpers (`src/money.ts`, ADR 0002). Money is integer cents everywh
   is 0 when nothing is raised or the goal isn't positive, and never `NaN`. Not capped at
   100.
 
-Endpoint DTOs and request schemas arrive with their endpoints (specs 003–005).
+And the public campaign contract (`src/campaigns.ts`, spec 003). The API builds these shapes
+and the web app parses every response with them:
+
+- `PublicCampaignSchema` / `PublicCampaign`: a campaign with its derived totals
+  (`raisedCents`, `donorCount`, `progressPercent`) and its `phase` (`upcoming`, `open` or
+  `closed`).
+- `PublicDonationSchema` / `PublicDonation`: one row of the public list. It is strict, so a
+  field that is not listed (an email, a donor id) cannot appear. `PublicDonationListSchema`
+  is the `{ data: [...] }` body of the list endpoint.
+- Dates are UTC strings ending in `Z`. An offset is rejected, so the API serialises a `Date`.
+- `CampaignSlugSchema`, and `RecentDonationsQuerySchema` for `?limit=` (1 to 50, default 20:
+  `DEFAULT_RECENT_DONATIONS`, `MAX_RECENT_DONATIONS`). The limit is matched as digits first,
+  so `''` and `1e1` are rejected rather than coerced.
+- `validation_failed` joins the error codes, for a 422.
+
+Request schemas and DTOs for donations and auth arrive with specs 004–005.
 
 Both apps import the **built** output (`dist/`, ESM plus `.d.ts`), the same way in dev,
 tests and Docker.

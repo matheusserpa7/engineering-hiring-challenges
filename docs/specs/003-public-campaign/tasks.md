@@ -11,7 +11,7 @@ If time must be cut here, in this order: the ETag/304 assertion → the stale-re
 (the guard stays) → T7's CI smoke (moves to 006). Privacy, totals and XSS tests are never
 cut.
 
-- [ ] **T1 — Shared: the public campaign contract** (~15 min)
+- [x] **T1 — Shared: the public campaign contract** (~15 min)
   - Files: `packages/shared/src/{campaigns.ts,errors.ts,index.ts}`,
     `packages/shared/test/campaigns.test.ts`, `packages/shared/README.md`
   - Test first: `campaigns.test.ts` (tech spec §7, row 1). Red: module missing.
@@ -106,4 +106,12 @@ after T4, T6 after T5. T7 last.
 
 ## Notes recorded during execution
 
-(empty)
+- T1, done. Test-first: red because the module was missing (shared 60 → 132 tests).
+  - Breaking the strict donation schema, the slug length cap, the limit minimum and the list
+    schema's strictness each failed exactly the intended tests.
+  - Review: no blockers. One major, fixed: §1 listed `PublicDonationListSchema` but the code
+    and §4 did not have it; added with tests, §4 now lists it. Also fixed: the `Z`-only date
+    rule is documented, the dedication name matches the spec (no `.min(1)`), and the query
+    edge cases (`null`, a number, `undefined`) and a `__proto__` key are pinned.
+  - Accepted: `z.uuid()` rejects non-RFC ids, fine because every id comes from
+    `gen_random_uuid()`.

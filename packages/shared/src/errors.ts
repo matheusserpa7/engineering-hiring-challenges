@@ -6,6 +6,7 @@ export const ERROR_CODES = [
   'malformed_json',
   'payload_too_large',
   'not_found',
+  'validation_failed',
   'unavailable',
   'internal_error',
 ] as const;

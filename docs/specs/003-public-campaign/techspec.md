@@ -191,6 +191,7 @@ one serialiser change from a leak (ADR 0005).
   .transform(Number).pipe(z.number().int().min(1).max(50)).optional() }).strict()`, with
   `DEFAULT_RECENT_DONATIONS = 20` and `MAX_RECENT_DONATIONS = 50` exported. Express 5's
   query parser gives an array for a repeated key, which fails the string check.
+- `PublicDonationListSchema` (`.strict()`): `{ data: PublicDonation[] }`, the body of the list.
 - `PublicDonationSchema` (`.strict()`): `id` uuid, `displayName` string, `amountCents`
   `AmountCentsSchema`, `dedication` `{ type: enum, name: string } | null`, `message`
   `string | null`, `createdAt` ISO datetime.
