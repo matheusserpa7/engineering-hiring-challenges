@@ -2,7 +2,7 @@
 
 The contract between `apps/api` and `apps/web`. If it changes, both builds see it.
 
-Today it holds the error envelope:
+It holds the error envelope:
 
 ```ts
 { "error": { "code": ErrorCode, "message": string, "details"?: unknown } }

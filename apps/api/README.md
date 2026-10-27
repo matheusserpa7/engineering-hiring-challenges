@@ -1,8 +1,10 @@
 # @aangan/api
 
 Express 5 on Node 24, talking to Postgres through Kysely and `pg`. On start it migrates the
-schema and seeds the campaign data, then serves a health check, the shared error envelope and
-a graceful shutdown. Business endpoints arrive in specs 003–005.
+schema and seeds the campaign data, then serves the public campaign, donation intake, sign-in,
+the donor's own records and the admin list with refunds, behind the shared error envelope and a
+graceful shutdown. The one-table route summary is in the [root README](../../README.md#api-reference);
+this file has the detail.
 
 ```bash
 npm run build:shared           # once, from the root: the API imports @aangan/shared from dist/
@@ -23,7 +25,7 @@ The root scripts (`npm test`, `npm run typecheck`, `npm run lint`) build shared 
 |---|---|
 | `src/config.ts` | Parses the environment with Zod at boot. A bad value stops the process and names the variable, never its value. |
 | `src/logger.ts` | pino, with cookies, `authorization` and `set-cookie` redacted. |
-| `src/app.ts` | `createApp({ logger, pingDb })`: middleware, routes, 404, error handler. Tests inject a failing `pingDb`. |
+| `src/app.ts` | `createApp(...)`: middleware, the two rate limiters, routes, 404, error handler. Tests inject a failing `pingDb`. |
 | `src/http/errors.ts` | `AppError` for expected failures; the handler that maps everything to the shared envelope. |
 | `src/http/health.ts` | `GET /api/health`: 200 when the database answers, 503 when it doesn't. |
 | `src/db/pool.ts` | The `pg` pool: 2 s connect timeout, 5 s query timeout, and an `error` listener so a dropped idle connection can't crash the process. |
@@ -32,11 +34,16 @@ The root scripts (`npm test`, `npm run typecheck`, `npm run lint`) build shared 
 | `src/db/seed/read-seed.ts` | Pure: seed file contents in, validated records out. Errors name a receipt number or a position, never a cell's content. |
 | `src/db/seed/seed.ts` | `runSeed`: accounts, campaigns, donors, donations and the receipt sequence in one transaction, `ON CONFLICT DO NOTHING` on a natural key, never an update. |
 | `src/scripts/migrate.ts`, `src/scripts/seed.ts` | The `db:migrate` and `db:seed` entry points: the same functions `start.ts` calls, then exit. |
+| `src/http/{campaigns,donations,auth,me,admin}.ts` | The routers: Zod parsing and status mapping only, no business rules. |
+| `src/http/{security,session}.ts` | helmet, CORS, the origin check, the login limiter, and the session cookie and guards. |
+| `src/services/` | Business rules and transactions: intake, sign-in, donor records, refunds. |
+| `src/repositories/` | SQL only. The public list, ownership and sort allow-lists live here. |
+| `src/payments/` | The mock provider and the charge-with-retry wrapper. |
 | `src/auth/password.ts` | scrypt hashing; the parameters travel with the hash. |
 | `src/start.ts` | Migrates, seeds, then listens, and on `SIGTERM`/`SIGINT` closes the server and the pool once, forcing an exit after 8 s. A failed step is logged by name and exits 1. |
 
-Routes are mounted under `/api` by the API itself, so `curl localhost:4000/api/health` and,
-once nginx arrives in spec 001 T9, `curl localhost:3000/api/health` use the same path.
+Routes are mounted under `/api` by the API itself, so `curl localhost:4000/api/health` and
+`curl localhost:3000/api/health` (through nginx) use the same path.
 
 ## Environment
 
@@ -50,9 +57,13 @@ once nginx arrives in spec 001 T9, `curl localhost:3000/api/health` use the same
 | `PAYMENT_TIMEOUT_MS` | `5000` | One deadline for the provider call and its retry; past it the donation stays `pending`. |
 | `PAYMENT_MOCK_LATENCY_MS` | `250` | Delay the mock provider adds to each charge. |
 | `DONATION_RATE_LIMIT` | `30` | Donation requests per client address per 10 minutes. |
+| `ALLOWED_ORIGINS` | `localhost` and `127.0.0.1` on `:3000` and `:5173` | Browser origins allowed by CORS and allowed to send a state-changing request. Compose builds its own list from `WEB_PORT`. |
+| `SESSION_TTL_HOURS` | `8` | Fixed lifetime from login; activity does not extend it. |
+| `COOKIE_SECURE` | `true` | Set `false` only for a browser that refuses `Secure` cookies on `http://localhost`. |
+| `LOGIN_RATE_LIMIT` | `20` | Login attempts per client address per 15 minutes, successes included. |
 
-`NODE_ENV` is read by Express itself (the Docker image sets `production` from spec 001 T9);
-the API's own code doesn't use it yet.
+`NODE_ENV` is read by Express itself (the Docker image sets `production`); the API's own code
+doesn't use it. Compose passes on `COOKIE_SECURE`, `DONATION_RATE_LIMIT` and `LOGIN_RATE_LIMIT`.
 
 ## Errors
 

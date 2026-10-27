@@ -41,7 +41,7 @@ T2's 413 → T3 (by hand in T11) → T6 (e2e stays local) → T5's `refund` spec
 - [x] **T7 — Security sweep** (~35 min) · self-review; findings become tasks
   - Files: `checklist.md` (Security rows); `package-lock.json` only if `npm audit fix` changes it.
   - Test: §6 commands, outputs kept. Commit: `docs: record the security sweep` · Depends: T2
-- [ ] **T8 — READMEs** (~60 min) · self-review
+- [x] **T8 — READMEs** (~60 min) · self-review
   - Files: `README.md`, `apps/{api,web}/README.md`, `packages/shared/README.md`, `e2e/README.md`.
   - Test: every command in them run once; the API table checked against `app.ts` and the routers.
   - Done: §7 outline. Commit: `docs: write the submission README` · Depends: T6, T7
@@ -108,6 +108,11 @@ amended). Self-review.
 
 **T7.** Sweep clean, so no new task: audit 0, gitleaks 3 hits (one fixed test UUID), headers and
 uid as expected, docs/07 greps empty or justified; evidence in `checklist.md`. Self-review.
+
+**T8.** Run once: `npm test` (275 + 488 + 190), the 20-parallel burst (3 × 201, 17 × 409, one new
+`donation processed` line), `db:migrate` and `db:seed` on the compose database; the API table was
+checked against the routers' `get`/`post` calls. Self-review. **Open:** the README's *Time spent*
+line waits for the author's own hours; the cold-build line comes with T10 and the video link with T13.
 
 ## Optional (only with time left)
 
