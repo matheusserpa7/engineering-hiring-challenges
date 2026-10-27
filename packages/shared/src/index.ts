@@ -13,6 +13,23 @@ export {
   type PublicDonationList,
   type RecentDonationsQuery,
 } from './campaigns.js';
+export {
+  DEDICATION_TYPES,
+  RECEIPT_STATUSES,
+  DonationReceiptSchema,
+  DonationRequestSchema,
+  IdempotencyKeySchema,
+  codePointLength,
+  MAX_EMAIL_LENGTH,
+  MAX_MESSAGE_CODE_POINTS,
+  MAX_NAME_CODE_POINTS,
+  PRIVACY_MODES,
+  normaliseName,
+  type DedicationType,
+  type DonationReceipt,
+  type DonationRequest,
+  type PrivacyMode,
+} from './donations.js';
 export { ERROR_CODES, isApiErrorBody, type ApiErrorBody, type ErrorCode } from './errors.js';
 export {
   AmountCentsSchema,

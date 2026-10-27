@@ -9,7 +9,7 @@ adapter with a deadline, two integration files against Postgres, and a form with
 screens. Cut order if needed: T5 (rate limit, S4) → the flaky retry in T2/T3 → E7's stale
 replay in T4 → T9's POST smoke (moves to 006). T4 is never cut.
 
-- [ ] **T1 — Shared: the donation contract** (~20 min) · reviewer: yes (validation, money)
+- [x] **T1 — Shared: the donation contract** (~20 min) · reviewer: yes (validation, money)
   - Files: `packages/shared/src/{donations.ts,errors.ts,index.ts}`,
     `packages/shared/test/donations.test.ts`, `packages/shared/README.md`
   - Test first: tech spec §10 row 1. Red: module missing.
@@ -108,3 +108,11 @@ T1 and T2 first, in either order. T3 needs both; T4 and T5 follow T3. Web: T6 ne
 T7 follows T6, T8 needs T7 and T4 (the 409 screen). T9 last.
 
 ## Notes recorded during execution
+- T1, done. Test-first: red because the module was missing (shared 132 → 209).
+  - Three mutations each failed the intended test: UTF-16 length, `donor` not strict, ZWJ stripped.
+  - Review: no blockers. Fixed: `codePointLength` exported (T7's counter), U+2060 joins the
+    separators (a name of only a word joiner was valid), the error-code test now goes through
+    `isApiErrorBody`, `DONATION_STATUSES` renamed `RECEIPT_STATUSES`, a 61-character token case.
+  - For T3: `requestHash` must treat an omitted `message`/`dedication` and `null` as equal, or one
+    donor gets `idempotency_key_mismatch` for resending the same body. Names have no database
+    length CHECK (only `message` does), so the 100 and 254 limits are API-only.

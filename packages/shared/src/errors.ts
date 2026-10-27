@@ -8,6 +8,15 @@ export const ERROR_CODES = [
   'not_found',
   'validation_failed',
   'unavailable',
+  'idempotency_key_required',
+  'idempotency_key_mismatch',
+  'request_in_progress',
+  'card_declined',
+  'insufficient_funds',
+  'payment_provider_error',
+  'campaign_closed',
+  'amount_out_of_range',
+  'rate_limited',
   'internal_error',
 ] as const;
 

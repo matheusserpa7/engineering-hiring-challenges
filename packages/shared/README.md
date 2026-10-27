@@ -45,7 +45,23 @@ and the web app parses every response with them:
   so `''` and `1e1` are rejected rather than coerced.
 - `validation_failed` joins the error codes, for a 422.
 
-Request schemas and DTOs for donations and auth arrive with specs 004–005.
+And the donation intake contract (`src/donations.ts`, spec 004):
+
+- `DonationRequestSchema`: the `POST /api/donations` body. Strict at every depth, so a
+  `status`, `donorId` or `role` is a 422. Text is NFC; lengths count code points (a 280-emoji
+  message passes, 281 fails). Names go through `normaliseName`; `email` is trimmed and
+  lower-cased; a blank `message` becomes `null`. `privacyMode` is required.
+- `normaliseName(value)`: NFC, then every run of whitespace, U+200B or U+2060 becomes one
+  space, then trim.
+  ZWJ and ZWNJ stay, because Devanagari conjuncts need them. `codePointLength` is exported
+  for the form's counter.
+- `IdempotencyKeySchema`: a UUID in any case, lower-cased. `DonationReceiptSchema`: the 2xx
+  body, strict; `receiptNumber` is `HCC-YYYY-` plus six or more digits.
+- Nine error codes join the list: `idempotency_key_required`, `idempotency_key_mismatch`,
+  `request_in_progress`, `card_declined`, `insufficient_funds`, `payment_provider_error`,
+  `campaign_closed`, `amount_out_of_range`, `rate_limited`.
+
+Auth schemas arrive with spec 005.
 
 Both apps import the **built** output (`dist/`, ESM plus `.d.ts`), the same way in dev,
 tests and Docker.

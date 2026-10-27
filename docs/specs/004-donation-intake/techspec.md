@@ -147,7 +147,7 @@ with no outcome and `created_at > now() - (timeout + 5 s)` (database clock) → 
 ## 7. Shared validation (`packages/shared/src/donations.ts`)
 
 - Text: NFC first, then checks. Lengths use `codePointLength` and report Zod's `too_big` /
-  `too_small` codes. `normaliseName`: every `\s` (incl. U+00A0, U+202F, U+FEFF) and U+200B →
+  `too_small` codes. `normaliseName`: every `\s` (incl. U+00A0, U+202F, U+FEFF), U+200B and U+2060 →
   one space, collapse, trim; ZWJ/ZWNJ kept (Devanagari conjuncts); C0/C1 controls → 422.
 - `fullName`, `dedication.name`: 1–100 code points. `email`: trim, NFC, lower-case,
   `z.email()`, ≤ 254. `message`: trimmed, empty → `null`, ≤ 280 code points, line breaks
