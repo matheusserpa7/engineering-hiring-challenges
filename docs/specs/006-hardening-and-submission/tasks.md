@@ -45,7 +45,7 @@ T2's 413 → T3 (by hand in T11) → T6 (e2e stays local) → T5's `refund` spec
   - Files: `README.md`, `apps/{api,web}/README.md`, `packages/shared/README.md`, `e2e/README.md`.
   - Test: every command in them run once; the API table checked against `app.ts` and the routers.
   - Done: §7 outline. Commit: `docs: write the submission README` · Depends: T6, T7
-- [ ] **T9 — AI-USAGE.md** (~20 min) · the user writes or confirms "what I changed"
+- [x] **T9 — AI-USAGE.md** (~20 min) · the user writes or confirms "what I changed"
   - Files: `AI-USAGE.md`, linked from README. Commit: `docs: describe how AI was used` · Depends: T8
 - [ ] **T10 — Clean-clone rehearsal** (~30 min, mostly waiting)
   - Files: `README.md` (cold-build line), `checklist.md` (It runs). Test: §8, timed, word for word.
@@ -113,6 +113,11 @@ uid as expected, docs/07 greps empty or justified; evidence in `checklist.md`. S
 `donation processed` line), `db:migrate` and `db:seed` on the compose database; the API table was
 checked against the routers' `get`/`post` calls. Self-review. **Open:** the README's *Time spent*
 line waits for the author's own hours; the cold-build line comes with T10 and the video link with T13.
+
+**T9.** Drafted from the task notes of specs 002–006, so each "what changed" line points to a
+spec task that records it. **For the author to confirm before submitting:** that Claude Code is the
+only tool used (a `.git/cursor` index was seen earlier), and which changes were his own rather than
+the reviewer's; the file says so only where the record does.
 
 ## Optional (only with time left)
 
