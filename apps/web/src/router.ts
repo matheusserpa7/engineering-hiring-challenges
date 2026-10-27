@@ -21,7 +21,7 @@ export function createAppRouter(history: RouterHistory = createWebHistory(), ses
       {
         path: '/admin',
         component: AdminPage,
-        meta: { requiresSession: true, requiresAdmin: true, wide: true },
+        meta: { requiresSession: true, requiresAdmin: true },
       },
       { path: '/:pathMatch(.*)*', component: NotFoundPage },
     ],
