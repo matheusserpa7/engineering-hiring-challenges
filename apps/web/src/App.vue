@@ -1,24 +1,33 @@
 <script setup lang="ts">
-import { onMounted, ref } from 'vue';
-import { z } from 'zod';
-import { getJson } from './api';
-
-const Health = z.strictObject({ status: z.literal('ok') });
-const apiStatus = ref<'checking' | 'ok' | 'unavailable'>('checking');
-
-onMounted(async () => {
-  try {
-    await getJson('/api/health', Health);
-    apiStatus.value = 'ok';
-  } catch {
-    apiStatus.value = 'unavailable';
-  }
-});
+import { RouterView } from 'vue-router';
 </script>
 
 <template>
   <main>
-    <h1>Aangan</h1>
-    <p>API: {{ apiStatus }}</p>
+    <RouterView />
   </main>
 </template>
+
+<style>
+body {
+  margin: 0;
+  font-family:
+    system-ui,
+    -apple-system,
+    'Segoe UI',
+    Roboto,
+    'Noto Sans',
+    'Noto Sans Devanagari',
+    sans-serif;
+  line-height: 1.5;
+  color: #111827;
+  background: #fff;
+}
+
+main {
+  box-sizing: border-box;
+  max-width: 40rem;
+  margin: 0 auto;
+  padding: 1rem;
+}
+</style>

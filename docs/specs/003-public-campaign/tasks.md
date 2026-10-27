@@ -70,9 +70,9 @@ cut.
   - Commit: `feat(web): render campaign totals and recent donations`
   - Depends on: T4
 
-- [ ] **T6 — Web: the campaign page, its states and routes** (~25 min)
+- [x] **T6 — Web: the campaign page, its states and routes** (~25 min)
   - Files: `apps/web/src/{composables/use-campaign.ts,views/campaign-page.vue,views/not-found-page.vue,router.ts,main.ts,App.vue}`,
-    `apps/web/test/campaign-page.test.ts`, `apps/web/vite.config.ts`
+    `apps/web/test/{campaign-page,router}.test.ts`, `apps/web/vite.config.ts`
     (`build.assetsInlineLimit: 0`), `apps/web/package.json` and `package-lock.json`
     (`vue-router`)
   - Test first: `campaign-page.test.ts`. Red: view missing.
@@ -155,3 +155,14 @@ after T4, T6 after T5. T7 last.
     own; self-reviewed (every string through `{{ }}`, amounts only via `formatCents`).
   - For T6: 375 px wrapping (`overflow-wrap: anywhere`, amounts `nowrap`) is set but unverified
     until the manual check; jsdom has no layout.
+- T6, done. Test-first: red because the view was missing (web 47 → 64).
+  - Six breaks each failed the intended test: no stale-response guard, a 404 read as an error,
+    no `encodeURIComponent`, no closed notice, no catch-all route (the `signal` break was
+    invalid syntax, so it proves nothing: the abort is saved bandwidth, the counter is the guarantee).
+  - No `code-reviewer`: client-only, no money, auth or personal data; self-reviewed.
+  - Checked on the compose stack through nginx `:3000` in Edge (DevTools emulation, 375 × 667):
+    $43,058.00, 28%, 46 donors; roof repair shows the closed notice; `/campaigns/nope` and
+    `/whatever` show not found; no horizontal overflow; no CSP violation; no `data:` URL in the build.
+  - Spec correction, no decision changed: rows 9 and 10 (the XSS payloads) sit at positions 42
+    and 43 of 49, so the page's 20 newest never show them, nor row 14. Their rendering stays
+    proven by the component tests; in a real browser it moves to the e2e in 006.
