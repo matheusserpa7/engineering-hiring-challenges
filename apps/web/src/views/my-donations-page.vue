@@ -54,26 +54,26 @@ onMounted(load);
 </script>
 
 <template>
-  <section aria-labelledby="mine-heading">
+  <section class="mine" aria-labelledby="mine-heading">
     <h1 id="mine-heading">My donations</h1>
 
     <p v-if="state.status === 'loading'" role="status">Loading your donations…</p>
 
     <div v-else-if="state.status === 'error'" role="alert">
       <p>Something went wrong. Please try again.</p>
-      <button type="button" @click="load">Retry</button>
+      <button type="button" class="btn" @click="load">Retry</button>
     </div>
 
     <template v-else-if="state.donations.length === 0">
       <p>You have not made a donation yet.</p>
-      <p><RouterLink to="/" class="give-link">Donate</RouterLink></p>
+      <p><RouterLink to="/" class="btn primary">Donate</RouterLink></p>
     </template>
 
-    <ul v-else class="donations">
+    <ul v-else class="donations card">
       <li v-for="donation in state.donations" :key="donation.id">
         <div class="head">
-          <span class="receipt">{{ donation.receiptNumber }}</span>
-          <span class="amount">{{ formatCents(donation.amountCents) }}</span>
+          <span class="receipt mono">{{ donation.receiptNumber }}</span>
+          <span class="amount num">{{ formatCents(donation.amountCents) }}</span>
         </div>
         <p class="campaign">{{ donation.campaign.title }}</p>
         <p class="status" :data-status="donation.status">
@@ -100,15 +100,26 @@ onMounted(load);
 </template>
 
 <style scoped>
+.mine {
+  display: grid;
+  gap: 1rem;
+  max-width: 52rem;
+  margin: 0 auto;
+}
+
 .donations {
   list-style: none;
   margin: 0;
-  padding: 0;
+  padding: 0 1.25rem;
 }
 
 li {
-  padding: 0.75rem 0;
-  border-bottom: 1px solid #e5e7eb;
+  padding: 1rem 0;
+  border-bottom: 1px solid var(--line);
+}
+
+li:last-child {
+  border-bottom: 0;
 }
 
 .head {
@@ -126,7 +137,7 @@ li {
 
 .amount {
   white-space: nowrap;
-  font-weight: 600;
+  font-weight: 700;
 }
 
 .campaign,
@@ -135,8 +146,24 @@ li {
   margin: 0.25rem 0 0;
 }
 
+.status {
+  font-weight: 600;
+}
+
+.status[data-status='completed'] {
+  color: var(--ok);
+}
+
 .status[data-status='refunded'] {
-  color: #92400e;
+  color: var(--info);
+}
+
+.status[data-status='failed'] {
+  color: var(--bad);
+}
+
+.status[data-status='pending'] {
+  color: var(--warn);
 }
 
 .note {
@@ -148,15 +175,32 @@ time {
   display: block;
   margin-top: 0.25rem;
   font-size: 0.875rem;
-  color: #4b5563;
+  color: var(--muted);
 }
 
-.give-link,
-button {
-  display: inline-flex;
-  align-items: center;
-  min-height: 2.75rem;
-  padding: 0 1.25rem;
-  font: inherit;
+@media (min-width: 760px) {
+  li {
+    display: grid;
+    grid-template-columns: 11rem minmax(0, 1fr) 11rem;
+    column-gap: 1rem;
+    align-items: start;
+  }
+
+  .head {
+    display: contents;
+  }
+
+  .amount {
+    grid-column: 3;
+    grid-row: 1;
+    text-align: right;
+  }
+
+  .campaign,
+  .status,
+  .note,
+  time:not(.refunded-on) {
+    grid-column: 2;
+  }
 }
 </style>
