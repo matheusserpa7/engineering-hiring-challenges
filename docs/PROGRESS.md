@@ -8,15 +8,18 @@ Last updated: 2026-10-27
 
 ## Resume here
 
-**Spec 005 is implemented (10 / 10), pushed and green in CI. Next: spec 006 (hardening and
-submission), written with the `spec-writer` agent.**
+**Spec 006 is implemented (T1–T12 of 13) and QA found no failures. What is left is the author's:
+record the video, give the hours, then T13 (link the video, close this file) and the delivery steps.**
 
 1. Read [`CLAUDE.md`](../CLAUDE.md), then this file.
-2. Specs 002–005 are closed in CI: [run 40540529874](https://github.com/matheusserpa7/engineering-hiring-challenges/actions/runs/40540529874)
-   (`check` and `stack` green, with `Donation intake` and `Login and ownership`), 2026-10-27, on `4d372cd`.
-3. Spec 006 (hardening and submission) is not written. Start it with the `spec-writer` agent: PRD,
-   tech spec and tasks, then stop for the user's ok. Read the forward notes below first.
-4. Follow the per-task flow in `CLAUDE.md`. Commit only when the user says so.
+2. CI is green on the pushed e2e job: [run 40549949249](https://github.com/matheusserpa7/engineering-hiring-challenges/actions/runs/40549949249)
+   (spec 006 T6). The QA evidence is in [`specs/006-hardening-and-submission/checklist.md`](specs/006-hardening-and-submission/checklist.md).
+3. Before submitting, the author: confirms `AI-USAGE.md` (the tools, which changes were his own),
+   fills the *Time spent* line of the README, records the video from
+   [`video-outline.md`](specs/006-hardening-and-submission/video-outline.md), then T13. Open the video
+   link and both URLs in a private window.
+4. Delivery: repo public (or `@sandesPathak` invited), `FirstName_LastName.zip` with `.git` and without
+   `node_modules`, and the email from `SUBMISSION.md`. Then stop before any optional spec.
 
 ## Phases
 
@@ -34,18 +37,18 @@ submission), written with the `spec-writer` agent.**
 |---|---|---|
 | 000-overview | Approved, committed | — |
 | 001-foundation | Done, pushed, CI green | 10 / 10 |
-| 002-data-and-money | Approved (`e6dba0e`), implemented, not yet closed by QA or CI | **6 / 6** (T1 `5244ca5` · T2 `27f850e` · T3 `b9cfb7b` · T4 `621646b` · T5 `a50f445` · T6 in the next commit) |
+| 002-data-and-money | Implemented, closed by CI and QA | **6 / 6** (T1 `5244ca5` · T2 `27f850e` · T3 `b9cfb7b` · T4 `621646b` · T5 `a50f445` · T6 in the next commit) |
 | 003-public-campaign | Implemented, pushed | **7 / 7** |
 | 004-donation-intake | Implemented, pushed | **9 / 9** |
 | 005-auth-admin-refunds | Implemented, pushed, CI green (run 40540529874) | **10 / 10** (T1 `b58d10f` · T2 `5295230` · T3 `219cda5` · T4 `e3bf653` · T5 `826d46b` · T6 `bdc1aac` · T7 `00c6c7c` · T8 `458a061` · T9 `da7ecba` · T10 in the next commit) |
-| 006-hardening-and-submission | Not written | — |
+| 006-hardening-and-submission | Implemented, pushed except the last commits; waits for the video | **12 / 13** (T13 needs the video link) |
 | 007 (S0) / 008 (X1) | Optional, only after 006 | — |
 
 ## Git state
 
 - Branch `main`, tracking `origin/main` on the user's fork. 
-- Pushed: the spec 005 commits (`c442fcd` the spec, then T1–T10), `origin/main` at `4d372cd`. Nothing
-  local is unpushed except what is committed after it.
+- `origin/main` is at `0ab86e9` (spec 006 T9). The commits after it (T10 to T12 and this one) are local
+  until the user asks for a push.
 - `tasks.md` of spec 005 was overwritten by a script in the T3 commit and restored in the T6 commit;
   the history shows it. The T3 commit also changes decision F1 (login attempts all count).
 
