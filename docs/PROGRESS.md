@@ -8,13 +8,12 @@ Last updated: 2026-10-27
 
 ## Resume here
 
-**Spec 005 is implemented (10 / 10). Push when the user asks, so CI runs the new `Login and ownership`
-step, record the green run, then run the `qa-verifier` and start spec 006.**
+**Spec 005 is implemented (10 / 10), pushed and green in CI. Next: spec 006 (hardening and
+submission), written with the `spec-writer` agent.**
 
 1. Read [`CLAUDE.md`](../CLAUDE.md), then this file.
-2. Close specs 002–005: push when the user asks, so CI runs the stack job (seed, public API,
-   `Donation intake`, `Login and ownership`), and record the green run here. Run the `qa-verifier`
-   agent if the user wants it.
+2. Specs 002–005 are closed in CI: [run 40540529874](https://github.com/matheusserpa7/engineering-hiring-challenges/actions/runs/40540529874)
+   (`check` and `stack` green, with `Donation intake` and `Login and ownership`), 2026-10-27, on `4d372cd`.
 3. Spec 006 (hardening and submission) is not written. Start it with the `spec-writer` agent: PRD,
    tech spec and tasks, then stop for the user's ok. Read the forward notes below first.
 4. Follow the per-task flow in `CLAUDE.md`. Commit only when the user says so.
@@ -38,15 +37,15 @@ step, record the green run, then run the `qa-verifier` and start spec 006.**
 | 002-data-and-money | Approved (`e6dba0e`), implemented, not yet closed by QA or CI | **6 / 6** (T1 `5244ca5` · T2 `27f850e` · T3 `b9cfb7b` · T4 `621646b` · T5 `a50f445` · T6 in the next commit) |
 | 003-public-campaign | Implemented, pushed | **7 / 7** |
 | 004-donation-intake | Implemented, pushed | **9 / 9** |
-| 005-auth-admin-refunds | Implemented, not yet pushed or closed by CI | **10 / 10** (T1 `b58d10f` · T2 `5295230` · T3 `219cda5` · T4 `e3bf653` · T5 `826d46b` · T6 `bdc1aac` · T7 `00c6c7c` · T8 `458a061` · T9 `da7ecba` · T10 in the next commit) |
+| 005-auth-admin-refunds | Implemented, pushed, CI green (run 40540529874) | **10 / 10** (T1 `b58d10f` · T2 `5295230` · T3 `219cda5` · T4 `e3bf653` · T5 `826d46b` · T6 `bdc1aac` · T7 `00c6c7c` · T8 `458a061` · T9 `da7ecba` · T10 in the next commit) |
 | 006-hardening-and-submission | Not written | — |
 | 007 (S0) / 008 (X1) | Optional, only after 006 | — |
 
 ## Git state
 
-- Branch `main`, tracking `origin/main` on the user's fork. `origin/main` is at `60dcb91` (spec 004).
-- **Local and not yet pushed:** the spec 005 commits (`c442fcd` the spec, then T1–T10). Push only when
-  the user asks.
+- Branch `main`, tracking `origin/main` on the user's fork. 
+- Pushed: the spec 005 commits (`c442fcd` the spec, then T1–T10), `origin/main` at `4d372cd`. Nothing
+  local is unpushed except what is committed after it.
 - `tasks.md` of spec 005 was overwritten by a script in the T3 commit and restored in the T6 commit;
   the history shows it. The T3 commit also changes decision F1 (login attempts all count).
 
@@ -116,6 +115,13 @@ From [spec 005's task notes](specs/005-auth-admin-refunds/tasks.md), for spec 00
   409 `not_refundable` (retry works); no lockout across many addresses on one account; signing in
   as B in a browser holding A's cookie leaves A's session valid until it expires; name search
   scans `donations` sequentially.
+- QA run on specs 002–005 (2026-10-27, `qa-verifier`): every checkable criterion passed. One
+  failure: `GET /api/campaigns/%E0%A4%A` (an undecodable percent-escape) through nginx on :3000
+  answers nginx's HTML 400, not the JSON `bad_request` envelope of spec 003 US-5. The same
+  escape in `/api/donations/:id` is also a 400 from Express, not the 404 of F12. Fix in nginx
+  (or accept and list it under Known issues). Not verified by QA, so 006 must: XSS rows in a
+  real browser, the 375 px layout of the public page, session expiry and tampered cookies against
+  the stack, login timing, provider-call counts, the token paths and the 429 limit end to end.
 - `/me/donations` returns the newest 100 with no paging; the admin list pages by 25.
 - A lost 200 on a refund followed by a retry shows 409 `already_refunded`, which the admin page
   reads as done.
