@@ -43,8 +43,8 @@ Tests: API `test/db/{auth,authz,admin-donations,refunds}.test.ts`, unit
 - **Given** a wrong password, an unknown email, or a seeded guest email (no password),
   **then** 401 `invalid_credentials` with byte-identical bodies, and the unknown-email median
   time is within 0.5×–2× of the wrong-password one. *(auth › "failures are indistinguishable")*
-- **Given** `LOGIN_RATE_LIMIT` failures from one IP in 15 min, **then** the next is 429 with
-  `Retry-After` and no hash runs; successes don't count. *(security-middleware › "login limit")*
+- **Given** `LOGIN_RATE_LIMIT` login attempts from one IP in 15 min, **then** the next is 429 with
+  `Retry-After` and no hash runs; successes count too. *(security-middleware › "login limit")*
 - **Given** an extra key or a non-string password, **then** 422, and the password is in
   neither the response nor the logs. *(auth › "strict body, no echo")*
 - **Given** an expired, logged-out or tampered token, **then** `/auth/me` is 401
@@ -129,5 +129,5 @@ Inherited: A2, A9, A11, ADR 0004/0005, 004 E11. Local decisions F1–F14: tech s
 ## Open questions
 
 - **Blocking:** budget, ~5 h against the planned 1 h 30 (cut order in tasks.md).
-- **Blocking:** `LOGIN_RATE_LIMIT` 10 failures per IP per 15 min; `SESSION_TTL_HOURS` 8,
+- **Blocking:** `LOGIN_RATE_LIMIT` 20 attempts per IP per 15 min; `SESSION_TTL_HOURS` 8,
   absolute (one office shift), not sliding.

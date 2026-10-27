@@ -37,7 +37,7 @@ describe('loadConfig', () => {
       ],
       SESSION_TTL_HOURS: 8,
       COOKIE_SECURE: true,
-      LOGIN_RATE_LIMIT: 10,
+      LOGIN_RATE_LIMIT: 20,
     });
   });
 

@@ -68,8 +68,8 @@ const EnvSchema = z.object({
     .enum(['true', 'false'])
     .default('true')
     .transform((value) => value === 'true'),
-  // Failed logins per client address per 15 minutes.
-  LOGIN_RATE_LIMIT: z.coerce.number().int().min(1).max(100_000).default(10),
+  // Login attempts per client address per 15 minutes, successes included.
+  LOGIN_RATE_LIMIT: z.coerce.number().int().min(1).max(100_000).default(20),
 });
 
 export type Config = z.infer<typeof EnvSchema>;

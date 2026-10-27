@@ -1,4 +1,6 @@
+import { randomBytes } from 'node:crypto';
 import { createApp } from './app.js';
+import { hashPassword, verifyPassword } from './auth/password.js';
 import { loadConfig } from './config.js';
 import { createDb } from './db/database.js';
 import { runMigrations } from './db/migrate.js';
@@ -28,6 +30,10 @@ for (const [step, run] of startupSteps) {
   }
 }
 
+// Made before the server listens: a host without the memory for the real cost fails here, at
+// boot, instead of answering every login with "wrong password" (tech spec 005 F6).
+const dummyHash = await hashPassword(randomBytes(32).toString('base64'));
+
 const app = createApp({
   logger,
   pingDb: () => pingDb(pool),
@@ -39,6 +45,12 @@ const app = createApp({
     donationRateLimit: config.DONATION_RATE_LIMIT,
   },
   security: { allowedOrigins: config.ALLOWED_ORIGINS, loginRateLimit: config.LOGIN_RATE_LIMIT },
+  auth: {
+    dummyHash,
+    sessionTtlHours: config.SESSION_TTL_HOURS,
+    cookieSecure: config.COOKIE_SECURE,
+    verifyPassword,
+  },
 });
 
 const server = app.listen(config.PORT, (error) => {

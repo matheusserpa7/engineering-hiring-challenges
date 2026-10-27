@@ -14,25 +14,56 @@ const MAX_MEMORY_BYTES = 256 * 1024 * 1024;
 // without breaking the hashes already stored.
 const STORED_FORMAT = /^scrypt\$([1-9]\d*)\$([1-9]\d*)\$([1-9]\d*)\$([^$]+)\$([^$]+)$/;
 
+// Each derivation holds 128 MiB, and libuv's four threads are shared with the DNS lookups the
+// database pool needs. Two at a time bounds the memory at 256 MiB and leaves threads free; the
+// rest wait in arrival order (tech spec 005 F7).
+export const MAX_CONCURRENT_HASHES = 2;
+
+export function createSlots(max: number): <T>(task: () => Promise<T>) => Promise<T> {
+  let active = 0;
+  const waiting: (() => void)[] = [];
+
+  const release = (): void => {
+    const next = waiting.shift();
+    if (next) next();
+    else active -= 1;
+  };
+
+  return async <T>(task: () => Promise<T>): Promise<T> => {
+    if (active < max) active += 1;
+    else await new Promise<void>((resolve) => waiting.push(resolve));
+    try {
+      return await task();
+    } finally {
+      release();
+    }
+  };
+}
+
+const hashSlots = createSlots(MAX_CONCURRENT_HASHES);
+
 function derive(
   password: string,
   salt: Buffer,
   keyLength: number,
   cost: { N: number; r: number; p: number },
 ): Promise<Buffer> {
-  return new Promise((resolve, reject) => {
-    // NFC so the same typed password gives the same hash on any keyboard or OS.
-    scrypt(
-      password.normalize('NFC'),
-      salt,
-      keyLength,
-      { ...cost, maxmem: MAX_MEMORY_BYTES },
-      (error, key) => {
-        if (error) reject(error);
-        else resolve(key);
-      },
-    );
-  });
+  return hashSlots(
+    () =>
+      new Promise((resolve, reject) => {
+        // NFC so the same typed password gives the same hash on any keyboard or OS.
+        scrypt(
+          password.normalize('NFC'),
+          salt,
+          keyLength,
+          { ...cost, maxmem: MAX_MEMORY_BYTES },
+          (error, key) => {
+            if (error) reject(error);
+            else resolve(key);
+          },
+        );
+      }),
+  );
 }
 
 // Node's base64 decoder skips characters it doesn't know. Encoding the result again and

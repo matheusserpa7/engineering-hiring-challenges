@@ -127,6 +127,52 @@ describe('security headers', () => {
   });
 });
 
+describe('login rate limit', () => {
+  const LIMIT = 3;
+  const limited = () =>
+    createApp({
+      logger: createLogger('silent'),
+      pingDb: () => Promise.resolve(),
+      db: neverConnectingDb(),
+      intake: testIntake,
+      security: { allowedOrigins: [WEB], loginRateLimit: LIMIT },
+    });
+  // An invalid body is refused (422) before the database, so only the limiter is under test.
+  const attempt = (app: ReturnType<typeof limited>) =>
+    request(app).post('/api/auth/login').send({});
+
+  it('answers 429 rate_limited with Retry-After once the limit is spent', async () => {
+    const app = limited();
+    for (let i = 0; i < LIMIT; i++) expect((await attempt(app)).status).toBe(422);
+
+    const res = await attempt(app);
+
+    expect(res.status).toBe(429);
+    expect(res.body).toMatchObject({ error: { code: 'rate_limited' } });
+    expect(Number(res.headers['retry-after'])).toBeGreaterThan(0);
+    expect(Number(res.headers['retry-after'])).toBeLessThanOrEqual(900);
+  });
+
+  it('counts a malformed body, because the limiter runs before the body parser', async () => {
+    const app = limited();
+    for (let i = 0; i < LIMIT; i++) {
+      const res = await request(app)
+        .post('/api/auth/login')
+        .set('Content-Type', 'application/json')
+        .send('{not json');
+      expect(res.status).toBe(400);
+    }
+    expect((await attempt(app)).status).toBe(429);
+  });
+
+  it('does not limit other routes, and the donation bucket is separate', async () => {
+    const app = limited();
+    for (let i = 0; i < LIMIT + 1; i++) await attempt(app);
+    expect((await request(app).get('/api/health')).status).toBe(200);
+    expect((await request(app).post('/api/donations').send({})).status).toBe(400);
+  });
+});
+
 describe('no security settings given', () => {
   it('refuses every browser origin instead of allowing all of them', async () => {
     const app = createApp({

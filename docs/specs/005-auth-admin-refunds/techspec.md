@@ -159,7 +159,7 @@ COMMIT;
 check** on every method but GET/HEAD/OPTIONS: an `Origin` present and not in the list, `null`
 included, → 403 `origin_not_allowed`; absent → continue (F5) → 5. donation limiter (004) and
 **login limiter**: `POST /api/auth/login`, per `req.ip`, 15 min, `LOGIN_RATE_LIMIT`,
-`skipSuccessfulRequests`, envelope 429 with `Retry-After` → 6. `express.json` → 7. routes.
+every attempt counts, envelope 429 with `Retry-After` → 6. `express.json` → 7. routes.
 
 The login limiter sits before the body parser and the handler, so a blocked attempt never
 reaches scrypt (forward note). The Origin check is needed because `localhost:3000` and `:4000`
@@ -179,7 +179,7 @@ are the same site, so `SameSite=Strict` alone does not stop a page on another lo
 
 | # | Chosen | Rejected | Why |
 |---|---|---|---|
-| F1 | Login limit per IP, failures only | IP + email (000 §9) | Needs the parsed body; rotating emails walks past it; IP bounds scrypt work |
+| F1 | Login limit per IP, every attempt counts (T3 review) | IP + email (000 §9); failures only | Needs the parsed body; rotating emails walks past it; refunding successes lets a public demo login reset the counter, so the IP would not bound scrypt work |
 | F2 | No `Idempotency-Key` on refund | Required key | `completed → refunded` is single-use, `refunds.donation_id` unique; no provider call |
 | F3 | `page`/`pageSize` in 005 | Wait for S0 | An envelope with no page 2 hides rows from the office |
 | F4 | `ALLOWED_ORIGINS` list | One `CORS_ORIGIN` | Dev (`:5173`), compose (`:3000`) and `127.0.0.1` differ; one list feeds CORS and Origin |
@@ -205,7 +205,7 @@ are the same site, so `SameSite=Strict` alone does not stop a page on another lo
 | shared `auth.test.ts` | Unit | Login, query and refund schemas: strict; enums; `page` `'0'`, `'1.5'`, `['1','2']`; `pageSize` 101; `q` NFD → NFC, blank → absent; reason 500 vs 501 emoji; response DTOs reject an extra key |
 | `password.test.ts` (+ case) | Unit | The slot limiter exported from `password.ts` runs 5 tasks never more than 2 at once, in arrival order, and frees a slot when a task rejects |
 | `config.test.ts` (+ cases) | Unit | `COOKIE_SECURE=false` → `false`; a bad origin or one with a path fails boot; defaults |
-| `security-middleware.test.ts` | Unit (never-connecting db) | Origin evil / `null` → 403 on POST, absent → passes, GET unaffected; CSP header exact; CORS echoes a listed origin only; login limit+1 → 429 + `Retry-After` with the verifier spy never called; successes don't count |
+| `security-middleware.test.ts` | Unit (never-connecting db) | Origin evil / `null` → 403 on POST, absent → passes, GET unaffected; CSP header exact; CORS echoes a listed origin only; login limit+1 → 429 + `Retry-After` with the verifier spy never called; successes count too |
 | `db/auth.test.ts` | Integration (seeded) | US-1: cookie attributes; stored hash = SHA-256(token); three failures byte-identical; timing ratio (median of 3, unknown vs wrong); strict body; no password or token in captured logs; expired row, logged-out token, tampered cookie → 401 |
 | `db/authz.test.ts` | Integration | US-2: donor → other's id 404 equal to a random id's; `/me` = receipts 19–21; donor → admin list and refund 403, no row changed; no session → 401 on every route; admin reads any id; demoted admin → 403 next request |
 | `db/admin-donations.test.ts` | Integration | US-3: Devanagari NFC and NFD, email part, `%`/`_` literal; status 66/7/2 (+ a synthetic pending); sort and 422s; pageSize 10 → 75 unique ids; page 9 empty; viewer scope with a donor viewer; with `enable_seqscan = off`, `EXPLAIN` names `donors_email_trgm_idx` |
@@ -223,7 +223,7 @@ Each task names the mutations that must fail its tests. Not automated here: logi
 | Safari drops `Secure` cookies on `http://localhost` | WebKit e2e in 006; `COOKIE_SECURE=false` fallback, documented |
 | Reviewer opens the site on a port or host not in `ALLOWED_ORIGINS` → every login 403 | Compose derives it from `WEB_PORT` with `localhost` and `127.0.0.1`; README names the variable |
 | Timing test flakes on CI | Wide 0.5×–2× band on medians; the mutation (no dummy hash) is ~100× off |
-| In-memory login limiter, one bucket per shared IP | Failures only, 10 per 15 min; documented like 004's |
+| In-memory login limiter, one bucket per shared IP | 20 attempts per 15 min, successes included; documented like 004's |
 | Brute force across many IPs on one account | Out of scope (no lockout: it would let anyone lock the admin out); Known issues |
 | Sessions table grows with logins | Expired rows of the donor are deleted at each login |
 | `pg_trgm` splits Devanagari words at vowel signs, depending on the db locale | Index results are rechecked by `ILIKE`; the integration test asserts the row, not the plan alone |

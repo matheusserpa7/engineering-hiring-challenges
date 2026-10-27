@@ -1,6 +1,11 @@
 import { randomBytes, scryptSync } from 'node:crypto';
 import { beforeAll, describe, expect, it } from 'vitest';
-import { hashPassword, verifyPassword } from '../src/auth/password.js';
+import {
+  MAX_CONCURRENT_HASHES,
+  createSlots,
+  hashPassword,
+  verifyPassword,
+} from '../src/auth/password.js';
 
 const CHEAP_N = 1024;
 
@@ -191,4 +196,43 @@ describe('password hashing', () => {
     expect(result).toBe(false);
     expect(elapsedMs).toBeLessThan(2000);
   }, 10_000);
+});
+
+describe('createSlots', () => {
+  const sleep = (ms: number) => new Promise((resolve) => setTimeout(resolve, ms));
+
+  it('runs at most two scrypt derivations at a time in production', () => {
+    // Each derivation holds 128 MiB, and libuv's four threads are shared with DNS lookups.
+    expect(MAX_CONCURRENT_HASHES).toBe(2);
+  });
+
+  it('never runs more tasks than it has slots, and starts them in arrival order', async () => {
+    const run = createSlots(2);
+    let active = 0;
+    let peak = 0;
+    const started: number[] = [];
+    const task = (id: number) => async () => {
+      started.push(id);
+      active += 1;
+      peak = Math.max(peak, active);
+      await sleep(15);
+      active -= 1;
+      return id;
+    };
+
+    const results = await Promise.all([1, 2, 3, 4, 5].map((id) => run(task(id))));
+
+    expect(results).toEqual([1, 2, 3, 4, 5]);
+    expect(peak).toBe(2);
+    expect(started).toEqual([1, 2, 3, 4, 5]);
+  });
+
+  it('frees the slot when a task rejects, so the queue does not stall', async () => {
+    const run = createSlots(1);
+    const failing = run(() => Promise.reject(new Error('boom')));
+    const next = run(() => Promise.resolve('ok'));
+
+    await expect(failing).rejects.toThrow('boom');
+    await expect(next).resolves.toBe('ok');
+  });
 });

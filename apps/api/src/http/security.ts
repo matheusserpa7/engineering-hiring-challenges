@@ -1,6 +1,7 @@
 import cors from 'cors';
 import type { RequestHandler } from 'express';
 import helmet from 'helmet';
+import { rateLimit } from 'express-rate-limit';
 import { errorBody } from './errors.js';
 
 export interface SecuritySettings {
@@ -10,7 +11,7 @@ export interface SecuritySettings {
 
 // With no settings nothing is allowed: a caller that forgets them gets a closed API, not an
 // open one. A request with no Origin header still passes (see originCheck).
-export const closedSecurity: SecuritySettings = { allowedOrigins: [], loginRateLimit: 10 };
+export const closedSecurity: SecuritySettings = { allowedOrigins: [], loginRateLimit: 20 };
 
 // The API returns JSON and nothing a browser should load, so the policy allows nothing and
 // forbids framing. useDefaults is off so the header says exactly this and no more.
@@ -51,4 +52,24 @@ export function originCheck(allowedOrigins: readonly string[]): RequestHandler {
     }
     res.status(403).json(errorBody('origin_not_allowed', 'This origin may not call the API.'));
   };
+}
+
+// Login attempts per client address. It sits ahead of the body parser and the handler, so a
+// blocked attempt never reaches scrypt, which is the expensive part. Successes count too: the
+// demo passwords are public, so refunding them would let anyone reset the counter with a
+// known login between guesses. Per address and not per email on purpose: the email lives in
+// the body, and rotating emails would walk past an email-keyed limit while still costing a
+// derivation each (tech spec 005 F1).
+export function loginLimiter(limit: number): RequestHandler {
+  return rateLimit({
+    windowMs: 15 * 60 * 1000,
+    limit,
+    standardHeaders: 'draft-8',
+    legacyHeaders: false,
+    handler: (_req, res) => {
+      res
+        .status(429)
+        .json(errorBody('rate_limited', 'Too many sign-in attempts. Please try again later.'));
+    },
+  });
 }

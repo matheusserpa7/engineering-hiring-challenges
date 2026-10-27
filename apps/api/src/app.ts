@@ -3,6 +3,7 @@ import type { Kysely } from 'kysely';
 import { rateLimit } from 'express-rate-limit';
 import { pinoHttp, stdSerializers } from 'pino-http';
 import type { Database } from './db/database.js';
+import { createAuthRouter } from './http/auth.js';
 import { createCampaignRouter } from './http/campaigns.js';
 import { createDonationRouter } from './http/donations.js';
 import { createErrorHandler, errorBody, notFound } from './http/errors.js';
@@ -10,12 +11,21 @@ import { createHealthHandler } from './http/health.js';
 import {
   closedSecurity,
   corsFor,
+  loginLimiter,
   originCheck,
   securityHeaders,
   type SecuritySettings,
 } from './http/security.js';
 import type { Logger } from './logger.js';
+import type { AuthSettings } from './services/auth.js';
 import type { IntakeSettings } from './services/donations.js';
+
+const closedAuth: AuthSettings = {
+  dummyHash: '',
+  sessionTtlHours: 8,
+  cookieSecure: true,
+  verifyPassword: () => Promise.resolve(false),
+};
 
 export interface AppDeps {
   logger: Logger;
@@ -27,6 +37,8 @@ export interface AppDeps {
   intake: IntakeSettings;
   // Origins and limits for the browser-facing routes. Omitted means closed: no origin allowed.
   security?: SecuritySettings;
+  // Omitted means no login can succeed: the dummy hash is not a hash, so nothing verifies.
+  auth?: AuthSettings;
 }
 
 // Dependencies come in as arguments so tests can build the app with a failing database.
@@ -37,6 +49,7 @@ export function createApp({
   now = () => new Date(),
   intake,
   security = closedSecurity,
+  auth = closedAuth,
 }: AppDeps): Express {
   const app = express();
 
@@ -91,11 +104,13 @@ export function createApp({
       },
     }),
   );
+  app.post('/api/auth/login', loginLimiter(security.loginRateLimit));
   app.use(express.json({ limit: '16kb' }));
 
   app.get('/api/health', createHealthHandler(pingDb, logger));
   app.use('/api', createCampaignRouter({ db, now }));
   app.use('/api', createDonationRouter({ db, now, ...intake }));
+  app.use('/api', createAuthRouter({ db, auth }));
 
   app.use(notFound);
   app.use(createErrorHandler(logger));
