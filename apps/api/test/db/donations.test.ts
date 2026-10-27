@@ -53,7 +53,7 @@ function build(paymentTimeoutMs = 2000) {
     pingDb: () => Promise.resolve(),
     db,
     now,
-    intake: { payments, paymentTimeoutMs, orgTimezone: 'America/Chicago' },
+    intake: { payments, paymentTimeoutMs, orgTimezone: 'America/Chicago', donationRateLimit: 1000 },
   });
 }
 

@@ -57,8 +57,8 @@ replay in T4 → T9's POST smoke (moves to 006). T4 is never cut.
   - Commit: `feat(api): replay donation outcomes by idempotency key`
   - Depends on: T3
 
-- [ ] **T5 — API: donation rate limit, proxy trust, access log** (~15 min) · reviewer: yes
-  - Files: `apps/api/src/{app.ts,http/donations.ts}`, `apps/api/test/{rate-limit,logging}.test.ts`,
+- [x] **T5 — API: donation rate limit, proxy trust, access log** (~15 min) · reviewer: yes
+  - Files: `apps/api/src/{app.ts,config.ts,start.ts,services/donations.ts}`, `apps/api/test/{rate-limit,logging,config}.test.ts`,
     `apps/api/package.json`, `package-lock.json` (`express-rate-limit`)
   - Test first: §10 rows 5–6. Red: no 429; the query string is logged.
   - Mutations: `trust proxy` `true` (the forged-entry test must fail); limiter after
@@ -145,3 +145,13 @@ T7 follows T6, T8 needs T7 and T4 (the 409 screen). T9 last.
   - Accepted: a loser of a key race with a new email leaves a donor row with no donation (the
     upsert commits before the claim loses); the claim-loser branch is covered by the 20-parallel
     test, not a deterministic one. The compose burst from the Done line was not run; the Testcontainers 20-parallel test stands in.
+- T5, done. Test-first: the rate-limit and logging tests were red (no 429, no `donationRateLimit`,
+  query string and `Referer` logged). Both listed mutations failed the intended tests: `trust proxy`
+  `true` (two bucket tests) and the limiter after `express.json` (the malformed-body burst).
+  - Review: no blockers. Fixed: the query string also reached the log through the `Referer` header
+    (now stripped, with a test); the redundant manual `Retry-After` was removed (the library sets it);
+    a lone `X-Forwarded-For` entry is pinned.
+  - Accepted: a direct call to `:4000` can forge the client address (published on 127.0.0.1 only).
+  - For 006: behind Docker Desktop, nginx may see one gateway address for every host client, so all
+    local e2e traffic shares one bucket of 30 per 10 min and compose does not forward
+    `DONATION_RATE_LIMIT`. Forward it in compose or keep e2e donations under the limit.

@@ -28,6 +28,7 @@ describe('loadConfig', () => {
       ORG_TIMEZONE: 'America/Chicago',
       PAYMENT_TIMEOUT_MS: 5000,
       PAYMENT_MOCK_LATENCY_MS: 250,
+      DONATION_RATE_LIMIT: 30,
     });
   });
 
@@ -37,11 +38,13 @@ describe('loadConfig', () => {
       ORG_TIMEZONE: 'Asia/Kathmandu',
       PAYMENT_TIMEOUT_MS: '800',
       PAYMENT_MOCK_LATENCY_MS: '0',
+      DONATION_RATE_LIMIT: '5',
     });
     expect(config).toMatchObject({
       ORG_TIMEZONE: 'Asia/Kathmandu',
       PAYMENT_TIMEOUT_MS: 800,
       PAYMENT_MOCK_LATENCY_MS: 0,
+      DONATION_RATE_LIMIT: 5,
     });
   });
 
@@ -51,6 +54,7 @@ describe('loadConfig', () => {
     ['PAYMENT_TIMEOUT_MS', '0'],
     ['PAYMENT_TIMEOUT_MS', 'soon'],
     ['PAYMENT_MOCK_LATENCY_MS', '-1'],
+    ['DONATION_RATE_LIMIT', '0'],
   ])('fails boot on %s=%s and names the variable, not the value', (name, value) => {
     const message = messageOf(() => loadConfig({ DATABASE_URL: databaseUrl, [name]: value }));
     expect(message).toContain(name);

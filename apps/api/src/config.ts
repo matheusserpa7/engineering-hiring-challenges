@@ -33,6 +33,8 @@ const EnvSchema = z.object({
   PAYMENT_TIMEOUT_MS: z.coerce.number().int().min(100).max(60_000).default(5000),
   // Simulated provider latency; tests and demos set it to 0.
   PAYMENT_MOCK_LATENCY_MS: z.coerce.number().int().min(0).max(10_000).default(250),
+  // Donation attempts per client address per 10 minutes, replays and malformed bodies included.
+  DONATION_RATE_LIMIT: z.coerce.number().int().min(1).max(100_000).default(30),
 });
 
 export type Config = z.infer<typeof EnvSchema>;

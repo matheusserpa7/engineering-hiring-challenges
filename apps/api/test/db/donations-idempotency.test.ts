@@ -46,6 +46,7 @@ function build(latencyMs = 0) {
       payments,
       paymentTimeoutMs: PAYMENT_TIMEOUT_MS,
       orgTimezone: 'America/Chicago',
+      donationRateLimit: 1000,
     },
   });
 }
@@ -248,6 +249,7 @@ describe('POST /api/donations: an outcome recorded by someone else first', () =>
         payments: racing,
         paymentTimeoutMs: PAYMENT_TIMEOUT_MS,
         orgTimezone: 'America/Chicago',
+        donationRateLimit: 1000,
       },
     });
     const res = await post(body());

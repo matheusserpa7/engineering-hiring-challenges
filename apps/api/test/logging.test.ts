@@ -5,6 +5,26 @@ import { createLogger } from '../src/logger.js';
 import { neverConnectingDb } from './never-connecting-db.js';
 import { testIntake } from './intake.js';
 
+it('keeps the query string, which can hold an email search, out of the access log', async () => {
+  const lines: string[] = [];
+  const logger = createLogger('info', { write: (line: string) => lines.push(line) });
+  const app = createApp({
+    logger,
+    pingDb: () => Promise.resolve(),
+    db: neverConnectingDb(),
+    intake: testIntake,
+  });
+
+  // A browser sends the page's own URL as Referer, search included.
+  await request(app)
+    .get('/api/nope?q=ana.souza@example.com')
+    .set('Referer', 'http://localhost:3000/admin?q=ana.souza@example.com');
+
+  const log = lines.join('');
+  expect(log).toContain('/api/nope');
+  expect(log).not.toContain('ana.souza');
+});
+
 it('keeps cookies and credentials out of the request log', async () => {
   const lines: string[] = [];
   const logger = createLogger('info', { write: (line: string) => lines.push(line) });

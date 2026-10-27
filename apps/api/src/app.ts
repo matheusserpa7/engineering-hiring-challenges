@@ -1,11 +1,12 @@
 import express, { type Express } from 'express';
 import type { Kysely } from 'kysely';
+import { rateLimit } from 'express-rate-limit';
 import helmet from 'helmet';
-import { pinoHttp } from 'pino-http';
+import { pinoHttp, stdSerializers } from 'pino-http';
 import type { Database } from './db/database.js';
 import { createCampaignRouter } from './http/campaigns.js';
 import { createDonationRouter } from './http/donations.js';
-import { createErrorHandler, notFound } from './http/errors.js';
+import { createErrorHandler, errorBody, notFound } from './http/errors.js';
 import { createHealthHandler } from './http/health.js';
 import type { Logger } from './logger.js';
 import type { IntakeSettings } from './services/donations.js';
@@ -30,14 +31,54 @@ export function createApp({
 }: AppDeps): Express {
   const app = express();
 
+  // nginx is the one proxy in front of the API. Trusting exactly one hop makes req.ip the
+  // address nginx appended, so a client-forged left-most X-Forwarded-For entry is ignored.
+  // `true` would trust the whole header and let any client pick its own bucket.
+  app.set('trust proxy', 1);
+
   app.use(
     pinoHttp({
       logger,
       // Docker polls the health check every few seconds; a failure is logged by the handler.
       autoLogging: { ignore: (req) => req.url === '/api/health' },
+      serializers: {
+        // A query string can carry an email (the admin `?q=` search), in the URL or in the
+        // Referer a browser sends from that page: log paths only. pino-http hands this
+        // function the already-serialized request, so it is re-serialized to reach both.
+        req: (req: Parameters<typeof stdSerializers.req>[0]) => {
+          const logged = stdSerializers.req(req);
+          const referer = logged.headers.referer;
+          return {
+            ...logged,
+            query: undefined,
+            url: logged.url.split('?')[0],
+            headers:
+              typeof referer === 'string'
+                ? { ...logged.headers, referer: referer.split('?')[0] }
+                : logged.headers,
+          };
+        },
+      },
     }),
   );
   app.use(helmet());
+  // Ahead of the body parser, so a flood of malformed or oversized bodies is counted too.
+  // In memory and per instance: it resets on restart, which one instance can live with.
+  app.post(
+    '/api/donations',
+    rateLimit({
+      windowMs: 10 * 60 * 1000,
+      limit: intake.donationRateLimit,
+      standardHeaders: 'draft-8',
+      legacyHeaders: false,
+      // The library has already set Retry-After from the window.
+      handler: (_req, res) => {
+        res
+          .status(429)
+          .json(errorBody('rate_limited', 'Too many donation attempts. Please try again later.'));
+      },
+    }),
+  );
   app.use(express.json({ limit: '16kb' }));
 
   app.get('/api/health', createHealthHandler(pingDb, logger));

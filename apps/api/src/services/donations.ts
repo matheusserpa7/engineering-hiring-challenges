@@ -22,6 +22,7 @@ export interface IntakeSettings {
   payments: PaymentProvider;
   paymentTimeoutMs: number;
   orgTimezone: string;
+  donationRateLimit: number;
 }
 
 export interface DonationDeps extends IntakeSettings {

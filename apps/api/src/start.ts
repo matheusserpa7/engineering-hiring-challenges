@@ -36,6 +36,7 @@ const app = createApp({
     payments: createMockProvider({ latencyMs: config.PAYMENT_MOCK_LATENCY_MS }),
     paymentTimeoutMs: config.PAYMENT_TIMEOUT_MS,
     orgTimezone: config.ORG_TIMEZONE,
+    donationRateLimit: config.DONATION_RATE_LIMIT,
   },
 });
 

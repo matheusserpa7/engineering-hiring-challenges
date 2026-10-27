@@ -5,4 +5,5 @@ export const testIntake = {
   payments: createMockProvider({ latencyMs: 0 }),
   paymentTimeoutMs: 1000,
   orgTimezone: 'America/Chicago',
+  donationRateLimit: 1000,
 };
