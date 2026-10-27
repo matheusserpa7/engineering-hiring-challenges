@@ -95,6 +95,12 @@ lets a developer raise the limits. The `stack` job's timeout goes from 15 to 20 
   the gift it made itself, so a re-run passes and the seed totals return.
 - `fixtures.ts`: a page fixture that fails on any `dialog`, and an init script that records
   `securitypolicyviolation` events; every spec asserts that list is empty at the end.
+- The CSP assertion found a real, harmless violation on every load: Zod's JIT probe is a caught
+  `new Function`, which nginx's CSP reports. Fixed in T4 by `z.config({ jitless: true })` in
+  `apps/web/src/main.ts` (no contract change); the fixture stays strict.
+- WebKit reports `style-src-attr` for the progress bar's CSSOM-set width but applies it (computed
+  width checked). The fixture ignores that one directive; `public` asserts the bar's width, so a
+  real block still fails. Known issue for the README. Every other directive stays fatal.
 - Selectors are roles and labels. A missing accessible name gets a label in the component, in
   the same task; no `data-testid`.
 

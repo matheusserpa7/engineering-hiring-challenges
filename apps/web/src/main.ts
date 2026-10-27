@@ -1,3 +1,4 @@
+import './zod-config';
 import { createApp } from 'vue';
 import App from './App.vue';
 import { SESSION_KEY, createSession } from './composables/use-session';

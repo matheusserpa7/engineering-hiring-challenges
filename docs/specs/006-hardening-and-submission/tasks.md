@@ -23,7 +23,7 @@ T2's 413 → T3 (by hand in T11) → T6 (e2e stays local) → T5's `refund` spec
     `docker-compose.yml`, `.env.example` (G7).
   - Test: §4, each step locally with its §11 negative control. Commit: `ci: check sessions, payments and rate limits`
   - Depends: T2
-- [ ] **T4 — Playwright and the public page** (~45 min) · self-review
+- [x] **T4 — Playwright and the public page** (~45 min) · self-review
   - Files: `package.json`, `package-lock.json`, `e2e/{playwright.config.ts,tsconfig.json,fixtures.ts,public.spec.ts,xss.spec.ts}`,
     component labels only if a role is missing.
   - Test: §5 `public`, `xss › public list`. Red: `:innerHTML` in `donation-list.vue` (lint
@@ -85,6 +85,13 @@ internal paths `/_errors/400` and `/_errors/413` (tech spec §3 showed `@bad_req
 step proves the limits fire within the defaults, not their exact values). Accepted: the Sessions
 `UPDATE` expires all of `donor@`'s sessions, so T6's e2e step must log in fresh; compose and
 `config.ts` both hold the defaults 30 and 20.
+
+**T4.** Red: `v-html` on the message fails `xss` and a 400 px `min-width` fails `public` (both
+reverted, lint bypassed); green on Chromium and WebKit. The CSP assertion found two things:
+Zod's JIT probe is reported on every load (fixed: `apps/web/src/zod-config.ts`, imported first,
+`z.config({ jitless: true })`; the spec's "no code change" line is amended in tech spec §5) and
+WebKit reports the progress bar's inline width as `style-src-attr` though it applies it (filtered
+in the fixture, width asserted instead; README Known issue). Self-review.
 
 ## Optional (only with time left)
 
