@@ -7,11 +7,13 @@ import type { Logger } from '../logger.js';
 import { chargeWithPolicy, type PaymentProvider } from '../payments/charge.js';
 import {
   claimDonation,
+  findByKey,
   findCampaignRules,
   nextReceiptSequence,
   recordOutcome,
   upsertDonor,
   type DonationRow,
+  type KeyedDonation,
   type Outcome,
 } from '../repositories/donations.js';
 import { campaignPhase } from './campaigns.js';
@@ -74,6 +76,62 @@ function toReceipt(row: DonationRow): DonationReceipt {
 export interface IntakeResult {
   httpStatus: 201 | 202;
   receipt: DonationReceipt;
+  replayed: boolean;
+}
+
+// A request that has had no outcome for longer than its own deadline plus this margin cannot
+// still be running (a crash, a restart), so it is answered 202 instead of locking the key.
+const IN_FLIGHT_MARGIN_MS = 5000;
+
+// The answer is derived from the row, not stored: the row is the record of what happened.
+function answerFromRow(row: DonationRow, replayed: boolean): IntakeResult {
+  const headers = replayed ? { 'Idempotent-Replayed': 'true' } : undefined;
+  if (row.status === 'failed') {
+    if (row.failure_code === 'provider_error') {
+      throw new AppError(
+        502,
+        'payment_provider_error',
+        'The payment provider is unavailable.',
+        undefined,
+        headers,
+      );
+    }
+    if (row.failure_code === 'insufficient_funds') {
+      throw new AppError(
+        402,
+        'insufficient_funds',
+        'The card has insufficient funds.',
+        undefined,
+        headers,
+      );
+    }
+    throw new AppError(402, 'card_declined', 'The card was declined.', undefined, headers);
+  }
+  return {
+    httpStatus: row.status === 'pending' ? 202 : 201,
+    receipt: toReceipt(row),
+    replayed,
+  };
+}
+
+function replayExisting(existing: KeyedDonation, hash: string): IntakeResult {
+  if (existing.request_hash !== hash) {
+    throw new AppError(
+      422,
+      'idempotency_key_mismatch',
+      'This Idempotency-Key was already used with a different request.',
+    );
+  }
+  if (existing.status === 'pending' && existing.failure_code === null && existing.is_fresh) {
+    throw new AppError(
+      409,
+      'request_in_progress',
+      'This donation is already being processed.',
+      undefined,
+      { 'Retry-After': '1' },
+    );
+  }
+  return answerFromRow(existing, true);
 }
 
 export async function submitDonation(
@@ -82,6 +140,13 @@ export async function submitDonation(
   request: DonationRequest,
 ): Promise<IntakeResult> {
   const { db, now, logger } = deps;
+  const hash = requestHash(request);
+  const freshForMs = deps.paymentTimeoutMs + IN_FLIGHT_MARGIN_MS;
+
+  // The key is looked up before the rules: a retry must get its original outcome back, not a
+  // rule that changed since. This read only short-cuts; the unique index below stays the arbiter.
+  const existing = await findByKey(db, idempotencyKey, freshForMs);
+  if (existing) return replayExisting(existing, hash);
 
   const campaign = await findCampaignRules(db, request.campaignSlug);
   if (!campaign) throw new AppError(404, 'not_found', 'Campaign not found.');
@@ -121,13 +186,14 @@ export async function submitDonation(
       is_recurring: request.isRecurring,
       receipt_number: receiptNumber(receiptYear(now(), deps.orgTimezone), sequence),
       idempotency_key: idempotencyKey,
-      request_hash: requestHash(request),
+      request_hash: hash,
     });
   });
-  // Answering an existing key properly (replay, mismatch, in flight) is spec 004 T4. Until then
-  // a taken key is refused: nothing was charged for this request, which is the safe side.
   if (!claimed) {
-    throw new AppError(409, 'request_in_progress', 'This donation is already being processed.');
+    // A concurrent request with this key won the insert. Its row is committed by now.
+    const winner = await findByKey(db, idempotencyKey, freshForMs);
+    if (!winner) throw new Error('idempotency key conflicted but no donation holds it');
+    return replayExisting(winner, hash);
   }
 
   const charge = await chargeWithPolicy(
@@ -165,23 +231,19 @@ export async function submitDonation(
     // The charge may already have happened. Telling the donor "error" invites a retry under a
     // new key and a second charge, so answer from the pending row instead.
     logger.error({ err: error, donationId: claimed.id }, 'recording the payment outcome failed');
-    return { httpStatus: 202, receipt: toReceipt(claimed) };
+    return { httpStatus: 202, receipt: toReceipt(claimed), replayed: false };
   }
-  if (!row) throw new Error('donation left the pending state before its outcome was recorded');
+  if (!row) {
+    // Something else recorded an outcome first; answer from what is stored.
+    const current = await findByKey(db, idempotencyKey, freshForMs);
+    if (!current) throw new Error('donation vanished before its outcome was recorded');
+    return answerFromRow(current, false);
+  }
 
   logger.info(
     { donationId: row.id, receiptNumber: row.receipt_number, status: row.status },
     'donation processed',
   );
 
-  if (row.status === 'failed') {
-    if (row.failure_code === 'provider_error') {
-      throw new AppError(502, 'payment_provider_error', 'The payment provider is unavailable.');
-    }
-    if (row.failure_code === 'insufficient_funds') {
-      throw new AppError(402, 'insufficient_funds', 'The card has insufficient funds.');
-    }
-    throw new AppError(402, 'card_declined', 'The card was declined.');
-  }
-  return { httpStatus: row.status === 'completed' ? 201 : 202, receipt: toReceipt(row) };
+  return answerFromRow(row, false);
 }

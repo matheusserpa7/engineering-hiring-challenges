@@ -394,12 +394,12 @@ describe('POST /api/donations: payment outcomes', () => {
     }
   });
 
-  it('does not charge twice when the same key is sent again (409 until spec 004 T4)', async () => {
+  it('does not charge twice when the same key is sent again', async () => {
     const first = await post(body(), KEY);
     const second = await post(body(), KEY);
     expect(first.status).toBe(201);
-    expect(second.status).toBe(409);
-    expect(second.body).toMatchObject({ error: { code: 'request_in_progress' } });
+    expect(second.status).toBe(201);
+    expect(second.body).toEqual(first.body);
     expect(calls).toHaveLength(1);
     expect(await count('donations')).toBe(76);
   });

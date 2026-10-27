@@ -49,6 +49,24 @@ export function claimDonation(db: Executor, values: Insertable<DonationsTable>) 
     .executeTakeFirst();
 }
 
+export type KeyedDonation = DonationRow & { is_fresh: boolean };
+
+// `is_fresh` is computed on the database clock, the same one that stamped created_at, so a
+// skewed app server cannot make a live request look abandoned. It only matters for a row that
+// still has no outcome. `freshForMs` is cast to int4: the payment timeout is capped far below it.
+export function findByKey(db: Executor, key: string, freshForMs: number) {
+  return db
+    .selectFrom('donations')
+    .selectAll()
+    .select(
+      sql<boolean>`created_at > now() - (${freshForMs}::int * interval '1 millisecond')`.as(
+        'is_fresh',
+      ),
+    )
+    .where('idempotency_key', '=', key)
+    .executeTakeFirst();
+}
+
 export type Outcome =
   | { kind: 'completed'; chargeId: string; last4: string }
   | { kind: 'failed'; failureCode: string }

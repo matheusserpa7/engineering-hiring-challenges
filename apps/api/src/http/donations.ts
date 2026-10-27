@@ -29,11 +29,12 @@ export function createDonationRouter(deps: DonationRouterDeps): Router {
     const request = parseInput(DonationRequestSchema, req.body, 'body');
 
     // req.log carries the request id, so a failure logged inside the service can be traced.
-    const { httpStatus, receipt } = await submitDonation(
+    const { httpStatus, receipt, replayed } = await submitDonation(
       { ...deps, logger: req.log },
       key.data,
       request,
     );
+    if (replayed) res.set('Idempotent-Replayed', 'true');
     res.status(httpStatus).json(receipt);
   });
 

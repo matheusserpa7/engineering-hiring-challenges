@@ -45,7 +45,7 @@ replay in T4 → T9's POST smoke (moves to 006). T4 is never cut.
   - Commit: `feat(api): accept donations through the mock provider`
   - Depends on: T1, T2
 
-- [ ] **T4 — API: idempotent answers under concurrency** (~30 min) · reviewer: yes
+- [x] **T4 — API: idempotent answers under concurrency** (~30 min) · reviewer: yes
   - Files: `apps/api/src/{services/donations.ts,repositories/donations.ts,http/donations.ts}`,
     `apps/api/test/db/donations-idempotency.test.ts`
   - Scope: §3 step 3 and §3.1, `Idempotent-Replayed`, `Retry-After: 1` on 409.
@@ -133,5 +133,15 @@ T7 follows T6, T8 needs T7 and T4 (the 409 screen). T9 last.
   - Differences from the task text: `createApp` takes one required `intake` group
     (`payments`, `paymentTimeoutMs`, `orgTimezone`), so seven existing tests pass a shared
     `test/intake.ts`; `DONATION_RATE_LIMIT` is added in T5 where it is read, not here.
-  - For T4: `recordOutcome` returning no row throws (a 500) for now; T4 answers it from the row.
+  - Done in T4: `recordOutcome` returning no row is answered from the stored row.
     An unwritable outcome answers 202 from the claimed row, proven with a trigger that fails UPDATE.
+- T4, done. Test-first: 11 of 13 new tests red (replays answered 409). Mutations that failed the
+  intended test: no `ON CONFLICT` (the race), no freshness check (stale pending), and the reviewer's
+  reorder cases are now pinned (mismatch beats an in-flight 409; an outcome written by someone else
+  is not overwritten).
+  - Review: no blockers. Fixed: two missing tests, a flaky race assertion (a late loser may be a
+    replayed 201), the first-402 header check, an `::int` comment. Single-mechanism header refactor
+    declined: the error path needs `AppError.headers` anyway.
+  - Accepted: a loser of a key race with a new email leaves a donor row with no donation (the
+    upsert commits before the claim loses); the claim-loser branch is covered by the 20-parallel
+    test, not a deterministic one. The compose burst from the Done line was not run; the Testcontainers 20-parallel test stands in.

@@ -10,6 +10,7 @@ export class AppError extends Error {
     readonly code: ErrorCode,
     message: string,
     readonly details?: unknown,
+    readonly headers?: Record<string, string>,
   ) {
     super(message);
     this.name = 'AppError';
@@ -48,6 +49,7 @@ export function createErrorHandler(logger: Logger): ErrorRequestHandler {
       return;
     }
     if (error instanceof AppError) {
+      if (error.headers) res.set(error.headers);
       res.status(error.status).json(errorBody(error.code, error.message, error.details));
       return;
     }
