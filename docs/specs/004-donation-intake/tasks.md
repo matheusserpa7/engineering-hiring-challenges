@@ -75,7 +75,7 @@ replay in T4 → T9's POST smoke (moves to 006). T4 is never cut.
   - Commit: `feat(web): submit donations with an idempotency key`
   - Depends on: T1
 
-- [ ] **T7 — Web: the donation form** (~30 min) · reviewer: no, self-review
+- [x] **T7 — Web: the donation form** (~30 min) · reviewer: no, self-review
   - Files: `apps/web/src/components/donation-form.vue`, `apps/web/test/donation-form.test.ts`,
     `apps/web/test/fixtures.ts`
   - Test first: PRD US-1 criteria 2–4. Red: component missing.
@@ -161,3 +161,10 @@ T7 follows T6, T8 needs T7 and T4 (the 409 screen). T9 last.
   - The key is reused only for outcomes where the server may have recorded the attempt (network
     error, 409, 429, unexpected response); every other answer, a 422 included, ends the attempt.
   - For T7/T8: `DonationOutcome` has a `rejected` kind carrying `details` for field mapping.
+- T7, done. Test-first: red because the component was missing (web 77 → 94 tests).
+  - Three mutations each failed the intended test: `.length` for the counter, a string amount in the
+    body, the privacy sentence's test id removed. Self-review only, as tasked.
+  - The form emits the schema's parsed output (normalised, `isRecurring` defaulted), so what the
+    donor sees validated is what is sent. No `maxlength` on the message: it counts UTF-16 units.
+  - For T8: the form takes `campaign` and `busy` and emits `submit`; server-side field errors
+    (`rejected.details`) are not mapped to fields, the result screen shows the message.
