@@ -69,8 +69,9 @@ byte-identical one). T3, T4 and T6 are never cut.
   - Done: green three runs in a row. Commit: `feat(api): refund donations with an audit row`
   - Depends on: T5 (shares `AdminDonation` mapping)
 
-- [ ] **T7 — Web: session, login page, navigation** (~35 min) · self-review (server enforces)
+- [x] **T7 — Web: session, login page, navigation** (~35 min) · self-review (server enforces)
   - Files: `apps/web/src/{api.ts,composables/use-session.ts,views/login-page.vue,router.ts,App.vue}`,
+    `apps/web/src/views/my-donations-page.vue` (a heading; T8 fills it),
     `apps/web/test/{api,session,login-page,router}.test.ts`
   - Test: PRD US-5 login criterion; guard redirects. Red: page missing.
   - Mutations: show the server's 401 message per field; skip the guard. Commit: `feat(web): add login and session state`
@@ -151,3 +152,10 @@ the post-commit re-read has an unreachable 404 branch (donations are never delet
 test runs on a pool of 10, so at most 10 contend at once; no test races a refund against an intake
 outcome write. For T9: a lost 200 followed by a retry returns 409 `already_refunded`, which the UI
 should read as done, not as a failure.
+
+**T7.** Skipping the route guard, showing the server's 401 wording and accepting any `next`
+each fail a test. Self-review (no reviewer, per the task): no `v-html`; the login page has one
+fixed sentence per failure and separates "unavailable" from "wrong password"; `next` must start
+with a single `/`. The session is created in `main.ts` and provided, not a module global, so each
+test builds its own. Added: a stub `my-donations-page.vue` so the guard has a route to protect.
+For T8/T9: call `session.expire()` on a 401 and send the person to `/login`.

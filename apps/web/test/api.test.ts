@@ -147,6 +147,16 @@ describe('postJson', () => {
     );
   });
 
+  it('sends no Idempotency-Key header and no body when the caller gives neither', async () => {
+    respond(201, '{"id":"a"}');
+
+    await postJson('/api/auth/logout', undefined, Receipt);
+
+    const init = vi.mocked(fetch).mock.calls[0]?.[1];
+    expect(init?.body).toBeUndefined();
+    expect(Object.keys(init?.headers ?? {})).not.toContain('Idempotency-Key');
+  });
+
   it('accepts a 202 as a success', async () => {
     respond(202, '{"id":"a"}');
 

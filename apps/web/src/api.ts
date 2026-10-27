@@ -82,12 +82,13 @@ export function getJson<T>(
 }
 
 // Any 2xx is a success, so a 202 (accepted, outcome pending) reads like a 201: the schema
-// carries the status the caller acts on. The key is required because every POST here moves money.
+// carries the status the caller acts on. A POST that moves money passes its key; login and
+// logout move none and send no key.
 export function postJson<T>(
   path: string,
   body: unknown,
   schema: z.ZodType<T>,
-  options: { idempotencyKey: string; signal?: AbortSignal },
+  options: { idempotencyKey?: string; signal?: AbortSignal } = {},
 ): Promise<T> {
   return request(
     path,
@@ -97,9 +98,11 @@ export function postJson<T>(
       headers: {
         Accept: 'application/json',
         'Content-Type': 'application/json',
-        'Idempotency-Key': options.idempotencyKey,
+        ...(options.idempotencyKey === undefined
+          ? {}
+          : { 'Idempotency-Key': options.idempotencyKey }),
       },
-      body: JSON.stringify(body),
+      body: body === undefined ? undefined : JSON.stringify(body),
     },
     options,
   );
