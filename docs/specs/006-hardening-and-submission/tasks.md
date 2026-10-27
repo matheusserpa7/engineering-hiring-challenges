@@ -54,7 +54,7 @@ T2's 413 → T3 (by hand in T11) → T6 (e2e stays local) → T5's `refund` spec
   - Files: `checklist.md`, `docs/PROGRESS.md`, README Known issues if new ones appear.
   - Done: every item pass or n/a with evidence; each failure fixed (new task) or listed.
   - Commit: `docs: complete the submission checklist` · Depends: T10
-- [ ] **T12 — Video outline and interview list** (~20 min)
+- [x] **T12 — Video outline and interview list** (~20 min)
   - Files: `video-outline.md`, `interview-questions.md` here (or private: open question).
   - Done: docs/06 timing as bullets, not a script; questions point to file and line, no
     scripted answers. Commit: `docs: outline the video walkthrough` · Depends: T11
@@ -127,6 +127,11 @@ also cleared other projects' cache on this machine. Self-review.
 **T11.** `qa-verifier`: every item pass or n/a, no failures, so no new task and no new Known issue.
 Its gifts polluted the live totals (about $68,111, 48 donors); `down -v` and `up` restores the seed,
 and I did that after. It saw the README's 49 s as T10's measurement, not its own (its cache was warm).
+
+**T12.** `video-outline.md` follows docs/06 timing as bullets; `interview-questions.md` points at
+file and line (checked at `ee0f46e`) with no scripted answers. Both are committed in this folder,
+which answers the open question "commit or keep private" the cheap way: they are plain
+preparation notes and can be moved out before submitting. Self-review.
 
 ## Optional (only with time left)
 
