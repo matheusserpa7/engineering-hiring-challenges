@@ -35,7 +35,7 @@ T2's 413 → T3 (by hand in T11) → T6 (e2e stays local) → T5's `refund` spec
   - Test: §5. Red: the refund form's submit removed; the admin donor name bound with `:innerHTML` (lint bypassed; the table shows no message).
   - Done: both browsers green twice in a row on one stack; WebKit cookie outcome noted (G10).
   - Commit: `test(e2e): cover giving, refunds and sessions` · Depends: T4
-- [ ] **T6 — E2E in CI** (~25 min) · self-review
+- [x] **T6 — E2E in CI** (~25 min) · self-review
   - Files: `.github/workflows/ci.yml` (e2e before *rate limits*, report artifact, timeout 20).
   - Done: a pushed run green on both browsers. Commit: `ci: run the Playwright suite against the stack` · Depends: T3, T5
 - [ ] **T7 — Security sweep** (~35 min) · self-review; findings become tasks
@@ -101,6 +101,11 @@ in the fixture, width asserted instead; README Known issue). Self-review.
 `test.fixme` on WebKit; README names `COOKIE_SECURE=false`. The admin table has no message
 column, so the planned admin message case became the donor-name case (PRD US-3, tech spec §5
 amended). Self-review.
+
+**T6.** Locally, with the default limits on a fresh API: Sessions, Payment outcomes, the e2e suite
+(10 passed, 2 skipped on WebKit per G10) and Rate limits pass in CI order. `stack` timeout 20 min;
+`upload-artifact` pinned to the v7.0.2 commit. **Not yet done: the pushed CI run** (the "Done"
+line), because pushing waits for the user's go-ahead. Self-review.
 
 ## Optional (only with time left)
 
