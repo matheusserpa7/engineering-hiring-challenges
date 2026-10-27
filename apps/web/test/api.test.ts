@@ -1,5 +1,8 @@
 import { afterEach, describe, expect, it, vi } from 'vitest';
+import { z } from 'zod';
 import { ApiError, getJson } from '../src/api';
+
+const Health = z.strictObject({ status: z.literal('ok') });
 
 function respondWith(status: number, body: string, contentType = 'application/json'): void {
   vi.stubGlobal(
@@ -25,29 +28,49 @@ afterEach(() => {
 });
 
 describe('getJson', () => {
-  it('returns the parsed body on 2xx, sending same-origin credentials', async () => {
+  it('returns the body parsed by the schema, sending same-origin credentials', async () => {
     respondWith(200, '{"status":"ok"}');
 
-    await expect(getJson('/api/health')).resolves.toEqual({ status: 'ok' });
+    await expect(getJson('/api/health', Health)).resolves.toEqual({ status: 'ok' });
     expect(fetch).toHaveBeenCalledWith(
       '/api/health',
       expect.objectContaining({ credentials: 'same-origin' }),
     );
   });
 
-  it('returns undefined for a 2xx with no body', async () => {
+  it('passes the abort signal to fetch', async () => {
+    respondWith(200, '{"status":"ok"}');
+    const { signal } = new AbortController();
+
+    await getJson('/api/health', Health, { signal });
+
+    expect(fetch).toHaveBeenCalledWith('/api/health', expect.objectContaining({ signal }));
+  });
+
+  it('throws unexpected_response for a 2xx that fails the schema', async () => {
+    respondWith(200, '{"status":"degraded"}');
+
+    const error = await errorOf(getJson('/api/health', Health));
+
+    expect(error.status).toBe(200);
+    expect(error.code).toBe('unexpected_response');
+  });
+
+  it('throws unexpected_response for a 2xx with no body when the schema wants one', async () => {
     vi.stubGlobal(
       'fetch',
       vi.fn(() => Promise.resolve(new Response(null, { status: 204 }))),
     );
 
-    await expect(getJson('/api/session')).resolves.toBeUndefined();
+    const error = await errorOf(getJson('/api/session', Health));
+
+    expect(error.code).toBe('unexpected_response');
   });
 
   it('throws unexpected_response for a 2xx whose body is not JSON', async () => {
     respondWith(200, '<!doctype html><div id="app"></div>', 'text/html');
 
-    const error = await errorOf(getJson('/api/health'));
+    const error = await errorOf(getJson('/api/health', Health));
 
     expect(error.status).toBe(200);
     expect(error.code).toBe('unexpected_response');
@@ -56,17 +79,29 @@ describe('getJson', () => {
   it('throws ApiError with the envelope code and message on an API error', async () => {
     respondWith(503, '{"error":{"code":"unavailable","message":"Try again soon."}}');
 
-    const error = await errorOf(getJson('/api/health'));
+    const error = await errorOf(getJson('/api/health', Health));
 
     expect(error.status).toBe(503);
     expect(error.code).toBe('unavailable');
     expect(error.message).toBe('Try again soon.');
   });
 
+  it('keeps the code of a 422 envelope', async () => {
+    respondWith(
+      422,
+      '{"error":{"code":"validation_failed","message":"Check the highlighted fields."}}',
+    );
+
+    const error = await errorOf(getJson('/api/health', Health));
+
+    expect(error.status).toBe(422);
+    expect(error.code).toBe('validation_failed');
+  });
+
   it('throws a generic unexpected_response for a body that is not our envelope', async () => {
     respondWith(502, '<html><body>nginx: Bad Gateway upstream 10.0.0.7</body></html>', 'text/html');
 
-    const error = await errorOf(getJson('/api/health'));
+    const error = await errorOf(getJson('/api/health', Health));
 
     expect(error.status).toBe(502);
     expect(error.code).toBe('unexpected_response');

@@ -46,9 +46,10 @@ cut.
   - Commit: `feat(api): list recent donations with privacy in the query`
   - Depends on: T2
 
-- [ ] **T4 — Web: typed API client and formatting helpers** (~15 min)
+- [x] **T4 — Web: typed API client and formatting helpers** (~15 min)
   - Files: `apps/web/src/{api.ts,format.ts}`, `apps/web/test/{api.test.ts,format.test.ts}`,
-    `apps/web/src/App.vue` (the health ping passes a schema, nothing else changes)
+    `apps/web/src/App.vue` (the health ping passes a schema, nothing else changes),
+    `apps/web/package.json` and `package-lock.json` (`zod`, for the schema type)
   - Test first: the new `api.test.ts` cases and `format.test.ts`. Red: `format.ts` missing,
     `getJson` takes no schema.
   - Done: green; no `toFixed`, no division of cents, no `getMonth()` (lint plus review).
@@ -137,3 +138,11 @@ after T4, T6 after T5. T7 last.
     "Maya" (A5), pinned as known limits. Spec 004 must normalise whitespace in names at intake.
   - The `Aama` dedication appears in the payload legitimately (row 1 is public); the check that
     matters is by id: row 13's item has a null dedication.
+- T4, done. Test-first: red because `format.ts` was missing and `getJson` took no schema (web 5 → 31).
+  - Four breaks each failed the intended tests: no `timeZone: 'UTC'` (all three zones), no
+    11-month cap (364 days read "12 months ago"), a future time not "just now", the `signal`
+    not passed to `fetch`.
+  - No `code-reviewer`: a client-side helper, no money or auth path; self-reviewed against
+    docs/07 (no float math, no `getMonth()`, no `toFixed`, no `any`).
+  - For T5/T6: `getJson` rethrows fetch's `AbortError` untouched, so `use-campaign` must treat
+    it as "superseded", not as an error state.
