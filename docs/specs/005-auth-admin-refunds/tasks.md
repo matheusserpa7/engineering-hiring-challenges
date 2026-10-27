@@ -77,7 +77,7 @@ byte-identical one). T3, T4 and T6 are never cut.
   - Mutations: show the server's 401 message per field; skip the guard. Commit: `feat(web): add login and session state`
   - Depends on: T3
 
-- [ ] **T8 — Web: my donations** (~20 min) · self-review
+- [x] **T8 — Web: my donations** (~20 min) · self-review
   - Files: `apps/web/src/views/my-donations-page.vue`, `apps/web/test/my-donations.test.ts`
   - Test: refunded label, empty state, 401 → login. Commit: `feat(web): list a donor's own donations`
   - Depends on: T7, T4
@@ -159,3 +159,9 @@ fixed sentence per failure and separates "unavailable" from "wrong password"; `n
 with a single `/`. The session is created in `main.ts` and provided, not a module global, so each
 test builds its own. Added: a stub `my-donations-page.vue` so the guard has a route to protect.
 For T8/T9: call `session.expire()` on a 401 and send the person to `/login`.
+
+**T8.** Rendering the message with `:innerHTML`, a fixed "Completed" label and ignoring the 401 each
+fail a test. Self-review: all text is interpolated (a `<script>` message renders as text); a 401
+calls `session.expire()` and goes to `/login?next=/me`; a failed request shows an error with a
+retry, never the empty state. Accepted: no paging (the API returns the newest 100); dates use the
+browser's zone and locale.
