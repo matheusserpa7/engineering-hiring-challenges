@@ -47,7 +47,7 @@ T2's 413 → T3 (by hand in T11) → T6 (e2e stays local) → T5's `refund` spec
   - Done: §7 outline. Commit: `docs: write the submission README` · Depends: T6, T7
 - [x] **T9 — AI-USAGE.md** (~20 min) · the user writes or confirms "what I changed"
   - Files: `AI-USAGE.md`, linked from README. Commit: `docs: describe how AI was used` · Depends: T8
-- [ ] **T10 — Clean-clone rehearsal** (~30 min, mostly waiting)
+- [x] **T10 — Clean-clone rehearsal** (~30 min, mostly waiting)
   - Files: `README.md` (cold-build line), `checklist.md` (It runs). Test: §8, timed, word for word.
   - Commit: `docs: note the cold build time` · Depends: T9, pushed
 - [ ] **T11 — QA run and the full CHECKLIST** (~30 min) · `qa-verifier`
@@ -118,6 +118,11 @@ line waits for the author's own hours; the cold-build line comes with T10 and th
 spec task that records it. **For the author to confirm before submitting:** that Claude Code is the
 only tool used (a `.git/cursor` index was seen earlier), and which changes were his own rather than
 the reviewer's; the file says so only where the record does.
+
+**T10.** Done from a real clone of the pushed `0ab86e9` (the push was needed for it): 49 s cold, both
+URLs, the seed numbers and all 953 tests in the clone. Not done: the private-browser-window look, which
+needs a browser pass by the author. Base images were removed and the whole build cache pruned, which
+also cleared other projects' cache on this machine. Self-review.
 
 ## Optional (only with time left)
 

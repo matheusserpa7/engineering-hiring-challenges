@@ -4,6 +4,25 @@ Mirrors `roles/full-stack-engineer/CHECKLIST.md`, which stays unedited. Each ite
 **pass**, **n/a** or **fail**, with the command or the file that shows it. The Security rows
 were filled by the T7 sweep on 2026-10-27 at `a9afe9a`; the other sections by T10 and T11.
 
+## It runs (T10)
+
+Rehearsal on 2026-10-27, from a fresh `git clone` of `0ab86e9` into an empty folder, after
+`docker compose down -v`, `docker builder prune -af` and removing `node:24-alpine` and
+`postgres:16-alpine`.
+
+| Item | Result | Evidence |
+|---|---|---|
+| Fresh clone, clean Docker state, it works | pass | `cp .env.example .env && docker compose up --build --wait` → exit 0, all three healthy, **49 s** cold |
+| I followed my own README word for word | pass | The README's Docker block, then its local-path commands: `npm ci` (17 s), `npm run lint`, `npm run typecheck`, `npm test` all exit 0 in the clone; `db:migrate` and `db:seed` ran on the compose database |
+| Migrations and seed run automatically | pass | The API migrates and seeds on start; totals below came with no other command |
+| Both URLs load | pass | `:3000/` serves the SPA (`<div id="app">`); `:4000/api/health` → `{"status":"ok"}` |
+| Expected numbers | pass | `/api/campaigns/aangan-courtyard` → `raisedCents` 4305800, `donorCount` 46, `progressPercent` 28 |
+| Cold-build time noted in the README | pass | *Run it* |
+| Non-root | pass | API uid 1000 (web 101, T7) |
+| Private-window check of both URLs | not done | A browser step for the author |
+
+Tests in the clone: shared 275, API 488, web 190, all passing.
+
 ## Security (T7)
 
 | Item | Result | Evidence |

@@ -30,7 +30,9 @@ docker compose up --build
 - Web: <http://localhost:3000>
 - API: <http://localhost:4000/api/health>
 
-The API migrates and seeds on start, so there is nothing else to run. Open the web URL and you
+The API migrates and seeds on start, so there is nothing else to run. A cold build, from a fresh
+clone with the Docker build cache cleared and the base images pulled again, took **49 seconds** until
+all three services were healthy (home broadband, Windows with Docker Desktop). Open the web URL and you
 should land on **Aangan — Courtyard Restoration** showing **$43,058.00 raised of $150,000.00**,
 **46 donors**, a progress bar at **28%**, and the 20 most recent gifts. The database holds 75
 seeded donations; refunded and failed ones are not in the total, the count or the list.
