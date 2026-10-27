@@ -1,6 +1,7 @@
 import { createRouter, createWebHistory, type RouterHistory } from 'vue-router';
 import type { Session } from './composables/use-session';
 import CampaignPage from './views/campaign-page.vue';
+import AdminPage from './views/admin-page.vue';
 import LoginPage from './views/login-page.vue';
 import MyDonationsPage from './views/my-donations-page.vue';
 import NotFoundPage from './views/not-found-page.vue';
@@ -17,6 +18,11 @@ export function createAppRouter(history: RouterHistory = createWebHistory(), ses
       { path: '/campaigns/:slug', component: CampaignPage, props: true },
       { path: '/login', component: LoginPage },
       { path: '/me', component: MyDonationsPage, meta: { requiresSession: true } },
+      {
+        path: '/admin',
+        component: AdminPage,
+        meta: { requiresSession: true, requiresAdmin: true, wide: true },
+      },
       { path: '/:pathMatch(.*)*', component: NotFoundPage },
     ],
   });
@@ -26,8 +32,11 @@ export function createAppRouter(history: RouterHistory = createWebHistory(), ses
   router.beforeEach(async (to) => {
     if (session === undefined || to.meta.requiresSession !== true) return true;
     await session.ensureLoaded();
-    if (session.state.value.status === 'signed-in') return true;
-    return { path: '/login', query: { next: to.fullPath } };
+    const current = session.state.value;
+    if (current.status !== 'signed-in') return { path: '/login', query: { next: to.fullPath } };
+    // A donor has no use for the page; the API refuses the donor's requests on its own.
+    if (to.meta.requiresAdmin === true && current.user.role !== 'admin') return '/';
+    return true;
   });
 
   return router;

@@ -82,7 +82,7 @@ byte-identical one). T3, T4 and T6 are never cut.
   - Test: refunded label, empty state, 401 → login. Commit: `feat(web): list a donor's own donations`
   - Depends on: T7, T4
 
-- [ ] **T9 — Web: admin table and refund** (~45 min) · self-review
+- [x] **T9 — Web: admin table and refund** (~45 min) · self-review
   - Files: `apps/web/src/{views/admin-page.vue,components/admin-donation-table.vue,components/refund-form.vue,composables/use-admin-donations.ts}`,
     `apps/web/test/admin-page.test.ts`
   - Test: PRD US-3 last criterion, US-5 admin criterion. Red: page missing.
@@ -165,3 +165,13 @@ fail a test. Self-review: all text is interpolated (a `<script>` message renders
 calls `session.expire()` and goes to `/login?next=/me`; a failed request shows an error with a
 retry, never the empty state. Accepted: no paging (the API returns the newest 100); dates use the
 browser's zone and locale.
+
+**T9.** Binding the confirmation with `:innerHTML` (which `vue/no-v-html` does not catch), putting `q`
+in the route query, skipping the admin route guard, dropping the in-flight guard on the refund form
+and ignoring a stale response each fail a test. On compose at 375 px: searching `गुरुङ` finds receipt 2,
+refunding it moved the public total 4,305,800 → 4,255,700 and donors 46 → 45; the first screenshot
+showed a cramped donor cell and a clipped pager, fixed (`.who`, `flex-wrap`). Self-review: all
+text is interpolated; a 409 `already_refunded` reads as done and reloads the list; a 401 expires
+the session. Accepted: refunds are inline in the row (F13), not a modal; the search runs on submit,
+not while typing; `pageSize` is fixed at 25. The refund left the local database changed (reset it
+with `docker compose down -v`). For 006: add a lint rule for `:innerHTML`/`v-bind:innerHTML`.

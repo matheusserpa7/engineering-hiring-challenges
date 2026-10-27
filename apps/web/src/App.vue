@@ -1,9 +1,10 @@
 <script setup lang="ts">
-import { RouterLink, RouterView, useRouter } from 'vue-router';
+import { RouterLink, RouterView, useRoute, useRouter } from 'vue-router';
 import { useSession } from './composables/use-session';
 
 const session = useSession();
 const router = useRouter();
+const route = useRoute();
 
 // Loaded once for the navigation; route guards wait on the same request.
 void session.ensureLoaded();
@@ -14,7 +15,7 @@ async function signOut(): Promise<void> {
 </script>
 
 <template>
-  <nav aria-label="Main">
+  <nav aria-label="Main" :class="{ wide: route.meta.wide === true }">
     <RouterLink to="/">Donate</RouterLink>
     <template v-if="session.state.value.status === 'signed-in'">
       <RouterLink to="/me">My donations</RouterLink>
@@ -25,7 +26,7 @@ async function signOut(): Promise<void> {
       Sign in
     </RouterLink>
   </nav>
-  <main>
+  <main :class="{ wide: route.meta.wide === true }">
     <RouterView />
   </main>
 </template>
@@ -51,6 +52,11 @@ main {
   max-width: 40rem;
   margin: 0 auto;
   padding: 1rem;
+}
+
+main.wide,
+nav.wide {
+  max-width: 64rem;
 }
 
 nav {
