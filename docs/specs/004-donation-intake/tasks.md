@@ -67,7 +67,7 @@ replay in T4 → T9's POST smoke (moves to 006). T4 is never cut.
   - Commit: `feat(api): rate-limit donations per client address`
   - Depends on: T3
 
-- [ ] **T6 — Web: post with a key, outcome state** (~20 min) · reviewer: no, self-review
+- [x] **T6 — Web: post with a key, outcome state** (~20 min) · reviewer: no, self-review
   - Files: `apps/web/src/{api.ts,idempotency-key.ts,composables/use-donation.ts}`,
     `apps/web/test/{api,use-donation}.test.ts`
   - Test first: §10 web unit row. Red: `postJson` missing.
@@ -155,3 +155,9 @@ T7 follows T6, T8 needs T7 and T4 (the 409 screen). T9 last.
   - For 006: behind Docker Desktop, nginx may see one gateway address for every host client, so all
     local e2e traffic shares one bucket of 30 per 10 min and compose does not forward
     `DONATION_RATE_LIMIT`. Forward it in compose or keep e2e donations under the limit.
+- T6, done. Test-first: red because `postJson` and `use-donation` were missing (web 69 → 77 tests).
+  - Both listed mutations failed the intended test: a new key on every submit, and the key kept
+    after a 402. Self-review only, as tasked.
+  - The key is reused only for outcomes where the server may have recorded the attempt (network
+    error, 409, 429, unexpected response); every other answer, a 422 included, ends the attempt.
+  - For T7/T8: `DonationOutcome` has a `rejected` kind carrying `details` for field mapping.

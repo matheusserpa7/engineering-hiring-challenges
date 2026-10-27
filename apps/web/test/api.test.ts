@@ -1,6 +1,6 @@
 import { afterEach, describe, expect, it, vi } from 'vitest';
 import { z } from 'zod';
-import { ApiError, getJson } from '../src/api';
+import { ApiError, getJson, postJson } from '../src/api';
 
 const Health = z.strictObject({ status: z.literal('ok') });
 
@@ -106,5 +106,85 @@ describe('getJson', () => {
     expect(error.status).toBe(502);
     expect(error.code).toBe('unexpected_response');
     expect(error.message).not.toContain('nginx');
+  });
+});
+
+describe('postJson', () => {
+  const Receipt = z.strictObject({ id: z.string() });
+
+  function respond(status: number, body: string, headers: Record<string, string> = {}): void {
+    vi.stubGlobal(
+      'fetch',
+      vi.fn(() =>
+        Promise.resolve(
+          new Response(body, {
+            status,
+            headers: { 'Content-Type': 'application/json', ...headers },
+          }),
+        ),
+      ),
+    );
+  }
+
+  it('sends the JSON body with the Idempotency-Key header', async () => {
+    respond(201, '{"id":"a"}');
+
+    await expect(
+      postJson('/api/donations', { amountCents: 100 }, Receipt, { idempotencyKey: 'key-1' }),
+    ).resolves.toEqual({ id: 'a' });
+
+    expect(fetch).toHaveBeenCalledWith(
+      '/api/donations',
+      expect.objectContaining({
+        method: 'POST',
+        credentials: 'same-origin',
+        body: '{"amountCents":100}',
+        headers: expect.objectContaining({
+          'Content-Type': 'application/json',
+          'Idempotency-Key': 'key-1',
+        }) as unknown,
+      }),
+    );
+  });
+
+  it('accepts a 202 as a success', async () => {
+    respond(202, '{"id":"a"}');
+
+    await expect(postJson('/api/donations', {}, Receipt, { idempotencyKey: 'k' })).resolves.toEqual(
+      { id: 'a' },
+    );
+  });
+
+  it('keeps the status, details and Retry-After of an error', async () => {
+    respond(
+      429,
+      '{"error":{"code":"rate_limited","message":"Slow down.","details":[{"field":"x"}]}}',
+      { 'Retry-After': '42' },
+    );
+
+    const error = await errorOf(postJson('/api/donations', {}, Receipt, { idempotencyKey: 'k' }));
+
+    expect(error.status).toBe(429);
+    expect(error.code).toBe('rate_limited');
+    expect(error.details).toEqual([{ field: 'x' }]);
+    expect(error.retryAfter).toBe(42);
+  });
+
+  it('reads a junk Retry-After as null', async () => {
+    respond(409, '{"error":{"code":"request_in_progress","message":"Busy."}}', {
+      'Retry-After': 'soon',
+    });
+
+    const error = await errorOf(postJson('/api/donations', {}, Receipt, { idempotencyKey: 'k' }));
+
+    expect(error.retryAfter).toBeNull();
+  });
+
+  it('throws unexpected_response for a 2xx that fails the schema', async () => {
+    respond(201, '{"id":1}');
+
+    const error = await errorOf(postJson('/api/donations', {}, Receipt, { idempotencyKey: 'k' }));
+
+    expect(error.code).toBe('unexpected_response');
   });
 });
