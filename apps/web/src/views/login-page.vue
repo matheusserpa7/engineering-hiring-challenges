@@ -1,6 +1,6 @@
 <script setup lang="ts">
 import { ref, useId } from 'vue';
-import { useRoute, useRouter } from 'vue-router';
+import { RouterLink, useRoute, useRouter } from 'vue-router';
 import { useSession, type LoginResult } from '../composables/use-session';
 
 const session = useSession();
@@ -59,14 +59,19 @@ async function onSubmit(): Promise<void> {
 </script>
 
 <template>
-  <section aria-labelledby="login-heading">
+  <section class="card login" aria-labelledby="login-heading">
+    <p class="eyebrow">Donors and office staff</p>
     <h1 id="login-heading">Sign in</h1>
+    <p class="muted">
+      Most donors never need an account. You can <RouterLink to="/">give as a guest</RouterLink>.
+    </p>
     <form novalidate class="login-form" @submit.prevent="onSubmit">
       <div class="field">
         <label :for="`${id}-email`">Email</label>
         <input
           :id="`${id}-email`"
           v-model="email"
+          class="input"
           type="email"
           name="email"
           autocomplete="username"
@@ -77,44 +82,54 @@ async function onSubmit(): Promise<void> {
         <input
           :id="`${id}-password`"
           v-model="password"
+          class="input"
           type="password"
           name="password"
           autocomplete="current-password"
         />
       </div>
       <p v-if="message !== null" role="alert" class="error">{{ message }}</p>
-      <button type="submit" :disabled="busy">{{ busy ? 'Signing in…' : 'Sign in' }}</button>
+      <button type="submit" class="btn primary lg" :disabled="busy">
+        {{ busy ? 'Signing in…' : 'Sign in' }}
+      </button>
     </form>
   </section>
 </template>
 
 <style scoped>
+.login {
+  display: grid;
+  gap: 1rem;
+  max-width: 26rem;
+  margin: 2rem auto;
+  padding: 1.75rem;
+  box-shadow: var(--shadow);
+}
+
+h1 {
+  font-size: 1.8rem;
+}
+
 .login-form {
   display: grid;
   gap: 1rem;
-  max-width: 24rem;
 }
 
 .field {
   display: grid;
-  gap: 0.25rem;
+  gap: 0.35rem;
 }
 
-input {
-  box-sizing: border-box;
-  min-height: 2.75rem;
-  padding: 0 0.75rem;
-  font: inherit;
-}
-
-button {
-  min-height: 2.75rem;
-  padding: 0 1.25rem;
-  font: inherit;
+label {
+  font-weight: 600;
 }
 
 .error {
   margin: 0;
-  color: #991b1b;
+  padding: 0.75rem 1rem;
+  border-radius: 10px;
+  background: var(--bad-soft);
+  color: var(--bad);
+  font-weight: 600;
 }
 </style>
