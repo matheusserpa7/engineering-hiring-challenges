@@ -93,7 +93,7 @@ replay in T4 → T9's POST smoke (moves to 006). T4 is never cut.
   - Commit: `feat(web): show donation outcomes and refresh the totals`
   - Depends on: T7, T4
 
-- [ ] **T9 — Stack smoke, README, progress** (~10 min) · self-review
+- [x] **T9 — Stack smoke, README, progress** (~10 min) · self-review
   - Files: `.github/workflows/ci.yml`, `apps/api/README.md`, `docs/PROGRESS.md`
   - Test first: run the new smoke lines locally with a negative control (expect the old
     total 4305800 after the gift) and see it fail.
@@ -175,3 +175,9 @@ T7 follows T6, T8 needs T7 and T4 (the 409 screen). T9 last.
     `tok_decline`, `tok_flaky` (201), `tok_timeout` (202, pending screen) each showed their
     screen; no horizontal overflow; the only console error was the expected 402.
   - After a success the form is replaced by the receipt; after a failure it stays with its values.
+- T9, done. Test-first: the smoke lines ran against the compose stack, and the negative control
+  (expecting the old total, `before + 0`) exited 1; the real lines exited 0. Self-review only.
+  - The step runs after the seed-restart check, which counts 75 rows and would fail after a gift.
+    It reads `raisedCents` with node rather than grep, and compares the replay byte for byte.
+  - Not run: the step in GitHub Actions (nothing is pushed). Nothing else is left open in this spec.
+

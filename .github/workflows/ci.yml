@@ -73,6 +73,30 @@ jobs:
       # Shared's runtime dependency (zod) has to be in the image, not only in the workspace.
       - name: Shared package loads in the image
         run: docker compose exec -T api node -e "import('@aangan/shared')"
+      # A real gift through nginx: 201 with a receipt, the same key replayed with the header and
+      # the same body, and the total moved by exactly the gift. Runs after the restart check
+      # because it adds a row to the seed. `raised` reads the field with node, not jq or grep,
+      # so key order in the JSON cannot matter.
+      - name: Donation intake
+        run: |
+          api=http://localhost:3000/api
+          raised() {
+            curl -fsS "$api/campaigns/aangan-courtyard" |
+              node -p "JSON.parse(require('fs').readFileSync(0, 'utf8')).raisedCents"
+          }
+          key=$(node -p "crypto.randomUUID()")
+          body='{"campaignSlug":"aangan-courtyard","amountCents":10100,"donor":{"fullName":"CI Donor","email":"ci@example.com"},"privacyMode":"public","paymentToken":"tok_ok"}'
+          give() {
+            curl -sS -D "$1.headers" -o "$1.json" -w '%{http_code}' -X POST "$api/donations" \
+              -H 'Content-Type: application/json' -H "Idempotency-Key: $key" -d "$body"
+          }
+          before=$(raised)
+          test "$(give first)" = 201
+          grep -q '"receiptNumber":"HCC-2026-' first.json
+          test "$(give replay)" = 201
+          grep -qi '^idempotent-replayed: true' replay.headers
+          cmp first.json replay.json
+          test "$(raised)" = "$((before + 10100))"
       - name: Logs on failure
         if: failure()
         run: docker compose logs

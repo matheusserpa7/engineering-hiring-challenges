@@ -46,6 +46,10 @@ once nginx arrives in spec 001 T9, `curl localhost:3000/api/health` use the same
 | `PORT` | `4000` | |
 | `LOG_LEVEL` | `info` | pino levels, or `silent` |
 | `SEED_DIR` | `roles/full-stack-engineer/seed` from the repo root | Where `campaigns.json` and `donations.csv` are read from. A relative value is taken from the repo root, whatever directory you start in. The files are read in place and never edited. |
+| `ORG_TIMEZONE` | `America/Chicago` | The organisation's zone: it decides the year in a receipt number. |
+| `PAYMENT_TIMEOUT_MS` | `5000` | One deadline for the provider call and its retry; past it the donation stays `pending`. |
+| `PAYMENT_MOCK_LATENCY_MS` | `250` | Delay the mock provider adds to each charge. |
+| `DONATION_RATE_LIMIT` | `30` | Donation requests per client address per 10 minutes. |
 
 `NODE_ENV` is read by Express itself (the Docker image sets `production` from spec 001 T9);
 the API's own code doesn't use it yet.
@@ -62,6 +66,37 @@ Every error is `{ "error": { "code", "message", "details"? } }` (`@aangan/shared
 | Other client errors (bad charset or encoding, undecodable URL parameter) | their 4xx | `bad_request` |
 | Database unreachable (health) | 503 | `unavailable` |
 | Anything unexpected | 500 | `internal_error`; the detail is logged, never sent |
+
+## Donating
+
+`POST /api/donations` needs an `Idempotency-Key` header (any UUID) and a strict JSON body. The
+amount is `amountCents`, an integer; the server checks it against the campaign's limits.
+`paymentToken` picks the mock provider's outcome: `tok_ok`, `tok_decline`, `tok_insufficient`,
+`tok_timeout` (answers 202, pending) or `tok_flaky` (fails once, then succeeds).
+
+```bash
+curl -i -X POST localhost:3000/api/donations \
+  -H 'Content-Type: application/json' \
+  -H "Idempotency-Key: $(node -p 'crypto.randomUUID()')" \
+  -d '{"campaignSlug":"aangan-courtyard","amountCents":10100,
+       "donor":{"fullName":"Anisha Gurung","email":"anisha@example.com"},
+       "privacyMode":"public","paymentToken":"tok_ok"}'
+```
+
+Sending the same key and body again answers the same status and receipt with
+`Idempotent-Replayed: true` and no second charge; the same key with another body is a 422. A
+missing or non-UUID key is a 400, so the reference `concurrency-burst.mjs`, which sends no
+headers, gets 400s until it adds one.
+
+| Outcome | Status | Code |
+|---|---|---|
+| Charged | 201 | receipt, `status: "completed"` |
+| Timeout, outcome unknown | 202 | receipt, `status: "pending"` |
+| Declined | 402 | `card_declined`, `insufficient_funds` |
+| Provider failed twice | 502 | `payment_provider_error` |
+| Same key still in flight | 409 | `request_in_progress`, `Retry-After: 1` |
+| Bad body, or outside the campaign's limits | 422 | `validation_failed`, `amount_out_of_range`, `campaign_closed`, `idempotency_key_mismatch` |
+| Over `DONATION_RATE_LIMIT` per 10 minutes | 429 | `rate_limited`, `Retry-After` |
 
 ## Demo accounts
 

@@ -8,12 +8,14 @@ Last updated: 2026-10-27
 
 ## Resume here
 
-**Spec 003 is implemented (7 / 7). Close it, then start spec 004.**
+**Spec 004 is implemented (9 / 9). Push when the user asks, so CI runs the new smoke steps, then
+start spec 005.**
 
 1. Read [`CLAUDE.md`](../CLAUDE.md), then this file.
-2. Close spec 003: push when the user asks, so CI runs the new `Public campaign API` smoke
-   step, and record the green run here. Run the `qa-verifier` agent if the user wants it.
-3. Spec 004 (donation intake) is not written. Start it with the `spec-writer` agent: PRD,
+2. Close specs 002–004: push when the user asks, so CI runs the stack job (seed, public API and
+   the new `Donation intake` step), and record the green run here. Run the `qa-verifier` agent
+   if the user wants it.
+3. Spec 005 (auth, admin, refunds) is not written. Start it with the `spec-writer` agent: PRD,
    tech spec and tasks, then stop for the user's ok. Read the forward notes below first.
 4. Follow the per-task flow in `CLAUDE.md`. Commit only when the user says so.
 
@@ -35,7 +37,7 @@ Last updated: 2026-10-27
 | 001-foundation | Done, pushed, CI green | 10 / 10 |
 | 002-data-and-money | Approved (`e6dba0e`), implemented, not yet closed by QA or CI | **6 / 6** (T1 `5244ca5` · T2 `27f850e` · T3 `b9cfb7b` · T4 `621646b` · T5 `a50f445` · T6 in the next commit) |
 | 003-public-campaign | Implemented, not yet pushed or closed by CI | **7 / 7** (T1–T6 committed, T7 in the next commit) |
-| 004-donation-intake | Not written | — |
+| 004-donation-intake | Implemented, not yet pushed or closed by CI | **9 / 9** |
 | 005-auth-admin-refunds | Not written | — |
 | 006-hardening-and-submission | Not written | — |
 | 007 (S0) / 008 (X1) | Optional, only after 006 | — |
@@ -64,7 +66,7 @@ Last updated: 2026-10-27
 
 ## What exists now
 
-- `npm ci && npm test` runs 225 tests (shared 60, API 160, web 5). The API's integration tests
+- `npm ci && npm test` runs 666 tests (shared 209, API 347, web 110). The API's integration tests
   run against a real Postgres through Testcontainers, so they need Docker. `lint`,
   `typecheck` and `test` build the shared package first.
   - Without Docker: `npx vitest run --project unit`, from `apps/api`.
@@ -92,8 +94,13 @@ From [spec 001's task notes](specs/001-foundation/tasks.md):
 
 - 002 (done in T6): shared's runtime dependency is in the API image;
   `import('@aangan/shared')` works there.
-- 004: `trust proxy` set to `1`, not `true`, when the rate limiter needs the client IP (spec 003 D1 moved it here).
-- 004: keep the `?q=` search out of the access log.
+- 004 (done in T5): `trust proxy` is `1`, not `true`.
+- 004 (done in T5): the access log carries no query string, so 005's `?q=` stays out of it.
+- 006: behind Docker Desktop, nginx may see one gateway address for every host client, so all
+  local e2e traffic shares one bucket of `DONATION_RATE_LIMIT` per 10 minutes, and compose does
+  not forward that variable. Forward it in compose or keep e2e donations under the limit.
+- 006: pending donations are never reconciled with the provider (the mock has no lookup call);
+  list it under Known issues.
 - 005: helmet CSP `default-src 'none'`; the `Origin` allow-list includes `:5173` in dev.
 
 From [spec 002's task notes](specs/002-data-and-money/tasks.md):
