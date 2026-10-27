@@ -127,9 +127,9 @@ function onSubmit(): void {
 
 <template>
   <form novalidate class="donation-form" @submit.prevent="onSubmit">
-    <fieldset>
+    <fieldset class="section">
       <legend>Amount</legend>
-      <div class="options">
+      <div class="options chips">
         <label v-for="cents in campaign.presetCents" :key="cents" class="option">
           <input v-model="form.amountChoice" type="radio" name="amount" :value="String(cents)" />
           {{ formatCents(cents) }}
@@ -144,6 +144,7 @@ function onSubmit(): void {
         <input
           :id="`${id}-custom`"
           v-model="form.customAmount"
+          class="input"
           type="text"
           name="customAmount"
           inputmode="decimal"
@@ -162,82 +163,97 @@ function onSubmit(): void {
       </p>
     </fieldset>
 
-    <div class="field">
-      <label :for="`${id}-name`">Full name</label>
-      <input
-        :id="`${id}-name`"
-        v-model="form.fullName"
-        type="text"
-        name="fullName"
-        autocomplete="name"
-        :aria-invalid="errors['donor.fullName'] !== undefined"
-      />
-      <p v-if="errors['donor.fullName'] !== undefined" class="error" data-testid="fullName-error">
-        {{ errors['donor.fullName'] }}
-      </p>
-    </div>
-
-    <div class="field">
-      <label :for="`${id}-email`">Email</label>
-      <input
-        :id="`${id}-email`"
-        v-model="form.email"
-        type="email"
-        name="email"
-        autocomplete="email"
-        :aria-invalid="errors['donor.email'] !== undefined"
-      />
-      <p v-if="errors['donor.email'] !== undefined" class="error" data-testid="email-error">
-        {{ errors['donor.email'] }}
-      </p>
-    </div>
-
-    <div class="field">
-      <label class="option">
-        <input v-model="form.dedicate" type="checkbox" name="dedicate" />
-        Dedicate this gift
-      </label>
-      <template v-if="form.dedicate">
-        <label :for="`${id}-dtype`">Dedication type</label>
-        <select :id="`${id}-dtype`" v-model="form.dedicationType" name="dedicationType">
-          <option v-for="type in DEDICATION_TYPES" :key="type" :value="type">
-            {{ DEDICATION_LABELS[type] }}
-          </option>
-        </select>
-        <label :for="`${id}-dname`">Name</label>
+    <fieldset class="section">
+      <legend>Your details</legend>
+      <div class="field">
+        <label :for="`${id}-name`">Full name</label>
         <input
-          :id="`${id}-dname`"
-          v-model="form.dedicationName"
+          :id="`${id}-name`"
+          v-model="form.fullName"
+          class="input"
           type="text"
-          name="dedicationName"
-          :aria-invalid="errors.dedication !== undefined"
+          name="fullName"
+          autocomplete="name"
+          :aria-invalid="errors['donor.fullName'] !== undefined"
         />
-        <p v-if="errors.dedication !== undefined" class="error" data-testid="dedication-error">
-          {{ errors.dedication }}
+        <p v-if="errors['donor.fullName'] !== undefined" class="error" data-testid="fullName-error">
+          {{ errors['donor.fullName'] }}
         </p>
-      </template>
-    </div>
+      </div>
 
-    <div class="field">
-      <label :for="`${id}-message`">Message (optional)</label>
-      <textarea
-        :id="`${id}-message`"
-        v-model="form.message"
-        name="message"
-        rows="3"
-        :aria-invalid="errors.message !== undefined"
-      />
-      <p class="counter" data-testid="message-count">
-        {{ messageLength }} / {{ MAX_MESSAGE_CODE_POINTS }}
-      </p>
-      <p v-if="errors.message !== undefined" class="error" data-testid="message-error">
-        {{ errors.message }}
-      </p>
-    </div>
+      <div class="field">
+        <label :for="`${id}-email`">Email</label>
+        <input
+          :id="`${id}-email`"
+          v-model="form.email"
+          class="input"
+          type="email"
+          name="email"
+          autocomplete="email"
+          :aria-invalid="errors['donor.email'] !== undefined"
+        />
+        <p v-if="errors['donor.email'] !== undefined" class="error" data-testid="email-error">
+          {{ errors['donor.email'] }}
+        </p>
+      </div>
+    </fieldset>
 
-    <fieldset>
+    <fieldset class="section">
+      <legend>Dedication and message</legend>
+      <div class="field">
+        <label class="option">
+          <input v-model="form.dedicate" type="checkbox" name="dedicate" />
+          Dedicate this gift
+        </label>
+        <template v-if="form.dedicate">
+          <label :for="`${id}-dtype`">Dedication type</label>
+          <select
+            :id="`${id}-dtype`"
+            v-model="form.dedicationType"
+            class="input"
+            name="dedicationType"
+          >
+            <option v-for="type in DEDICATION_TYPES" :key="type" :value="type">
+              {{ DEDICATION_LABELS[type] }}
+            </option>
+          </select>
+          <label :for="`${id}-dname`">Name</label>
+          <input
+            :id="`${id}-dname`"
+            v-model="form.dedicationName"
+            class="input"
+            type="text"
+            name="dedicationName"
+            :aria-invalid="errors.dedication !== undefined"
+          />
+          <p v-if="errors.dedication !== undefined" class="error" data-testid="dedication-error">
+            {{ errors.dedication }}
+          </p>
+        </template>
+      </div>
+
+      <div class="field">
+        <label :for="`${id}-message`">Message (optional)</label>
+        <textarea
+          :id="`${id}-message`"
+          v-model="form.message"
+          class="input"
+          name="message"
+          rows="3"
+          :aria-invalid="errors.message !== undefined"
+        />
+        <p class="counter" data-testid="message-count">
+          {{ messageLength }} / {{ MAX_MESSAGE_CODE_POINTS }}
+        </p>
+        <p v-if="errors.message !== undefined" class="error" data-testid="message-error">
+          {{ errors.message }}
+        </p>
+      </div>
+    </fieldset>
+
+    <fieldset class="section">
       <legend>Who can see your gift</legend>
-      <div class="options">
+      <div class="options chips">
         <label v-for="option in PRIVACY_OPTIONS" :key="option.value" class="option">
           <input v-model="form.privacyMode" type="radio" name="privacyMode" :value="option.value" />
           {{ option.label }}
@@ -249,17 +265,20 @@ function onSubmit(): void {
       </p>
     </fieldset>
 
-    <div class="field">
-      <label :for="`${id}-card`">Test card</label>
-      <select :id="`${id}-card`" v-model="form.paymentToken" name="paymentToken">
-        <option v-for="card in TEST_CARDS" :key="card.value" :value="card.value">
-          {{ card.label }}
-        </option>
-      </select>
-    </div>
+    <fieldset class="section">
+      <legend>Payment</legend>
+      <div class="field">
+        <label :for="`${id}-card`">Test card <span class="pill">Mock provider</span></label>
+        <select :id="`${id}-card`" v-model="form.paymentToken" class="input" name="paymentToken">
+          <option v-for="card in TEST_CARDS" :key="card.value" :value="card.value">
+            {{ card.label }}
+          </option>
+        </select>
+      </div>
+    </fieldset>
 
     <p v-if="errors.form !== undefined" class="error" role="alert">{{ errors.form }}</p>
-    <button type="submit" :disabled="busy">
+    <button type="submit" class="btn primary lg" :disabled="busy">
       {{ busy ? 'Processing…' : 'Donate' }}
     </button>
   </form>
@@ -268,19 +287,36 @@ function onSubmit(): void {
 <style scoped>
 .donation-form {
   display: grid;
-  gap: 1rem;
+  gap: 1.25rem;
 }
 
-fieldset {
+.section {
+  display: grid;
+  gap: 0.75rem;
   margin: 0;
-  padding: 0.75rem 1rem;
-  border: 1px solid #d1d5db;
-  border-radius: 0.5rem;
+  padding: 1.25rem 0 0;
+  border: 0;
+  border-top: 1px solid var(--line);
+}
+
+.section:first-child {
+  padding-top: 0;
+  border-top: 0;
+}
+
+legend {
+  padding: 0;
+  font-weight: 700;
+  font-family: var(--font-display);
 }
 
 .field {
   display: grid;
-  gap: 0.25rem;
+  gap: 0.35rem;
+}
+
+label {
+  font-weight: 600;
 }
 
 .options {
@@ -296,15 +332,37 @@ fieldset {
   min-height: 2.75rem;
 }
 
-input[type='text'],
-input[type='email'],
-select,
-textarea,
-button {
-  box-sizing: border-box;
-  min-height: 2.75rem;
-  padding: 0.5rem 0.75rem;
-  font: inherit;
+.chips .option {
+  position: relative;
+  justify-content: center;
+  min-width: 5rem;
+  padding: 0.5rem 1rem;
+  border: 1.5px solid var(--line-strong);
+  border-radius: 10px;
+  background: var(--surface);
+  font-variant-numeric: tabular-nums;
+  cursor: pointer;
+}
+
+.chips .option input {
+  position: absolute;
+  inset: 0;
+  width: 100%;
+  height: 100%;
+  margin: 0;
+  opacity: 0;
+  cursor: pointer;
+}
+
+.chips .option:has(input:checked) {
+  border-color: var(--brand);
+  background: var(--brand-soft);
+  color: var(--brand-strong);
+}
+
+.chips .option:has(input:focus-visible) {
+  outline: 3px solid var(--focus);
+  outline-offset: 2px;
 }
 
 textarea {
@@ -313,13 +371,24 @@ textarea {
 
 .counter {
   margin: 0;
-  color: #4b5563;
+  color: var(--muted);
   font-size: 0.875rem;
   text-align: right;
 }
 
 .error {
   margin: 0;
-  color: #b91c1c;
+  color: var(--bad);
+  font-weight: 600;
+}
+
+@media (min-width: 760px) {
+  .section:has(input[name='fullName']) {
+    grid-template-columns: repeat(2, minmax(0, 1fr));
+  }
+
+  .section:has(input[name='fullName']) > legend {
+    grid-column: 1 / -1;
+  }
 }
 </style>
