@@ -3,11 +3,13 @@ import type { Kysely } from 'kysely';
 import { rateLimit } from 'express-rate-limit';
 import { pinoHttp, stdSerializers } from 'pino-http';
 import type { Database } from './db/database.js';
+import { adminGuard } from './http/admin.js';
 import { createAuthRouter } from './http/auth.js';
 import { createCampaignRouter } from './http/campaigns.js';
 import { createDonationRouter } from './http/donations.js';
 import { createErrorHandler, errorBody, notFound } from './http/errors.js';
 import { createHealthHandler } from './http/health.js';
+import { createMeRouter } from './http/me.js';
 import {
   closedSecurity,
   corsFor,
@@ -105,12 +107,14 @@ export function createApp({
     }),
   );
   app.post('/api/auth/login', loginLimiter(security.loginRateLimit));
+  app.use('/api/admin', ...adminGuard({ db, auth }));
   app.use(express.json({ limit: '16kb' }));
 
   app.get('/api/health', createHealthHandler(pingDb, logger));
   app.use('/api', createCampaignRouter({ db, now }));
   app.use('/api', createDonationRouter({ db, now, ...intake }));
   app.use('/api', createAuthRouter({ db, auth }));
+  app.use('/api', createMeRouter({ db, auth }));
 
   app.use(notFound);
   app.use(createErrorHandler(logger));

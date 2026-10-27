@@ -42,6 +42,18 @@ export const noStore: RequestHandler = (_req, res, next) => {
   next();
 };
 
+// The role is the one read from the database for this request, so a demoted admin is refused
+// at once. 403 only for a role; a row that is not yours is a 404 (see donor-records).
+export function requireRole(role: SessionUser['role']): RequestHandler {
+  return (req, _res, next) => {
+    next(
+      viewerOf(req).role === role
+        ? undefined
+        : new AppError(403, 'forbidden', 'You do not have access to this.'),
+    );
+  };
+}
+
 export function requireSession(deps: AuthDeps): RequestHandler {
   return async (req, res, next) => {
     const cookieValue = sessionCookieOf(req);
