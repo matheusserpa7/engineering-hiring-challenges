@@ -30,6 +30,9 @@ services:
       # changes state from any other origin gets a 403.
       ALLOWED_ORIGINS: http://localhost:${WEB_PORT:-3000},http://127.0.0.1:${WEB_PORT:-3000}
       COOKIE_SECURE: ${COOKIE_SECURE:-true}
+      # Same defaults as config.ts, so change them together. Passed on so a QA burst or repeated e2e runs can raise them.
+      DONATION_RATE_LIMIT: ${DONATION_RATE_LIMIT:-30}
+      LOGIN_RATE_LIMIT: ${LOGIN_RATE_LIMIT:-20}
     depends_on:
       db:
         condition: service_healthy

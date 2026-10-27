@@ -142,6 +142,60 @@ jobs:
           done
           cmp out3000 out4000
           grep -q payload_too_large out3000
+      # A session the server never issued is refused, and a real one stops working once its
+      # expiry has passed. The expiry is moved by SQL: no TTL setting exists just for this test.
+      # The row is expired before the first 401 is read, so the 200 before it is the control.
+      - name: Sessions
+        run: |
+          api=http://localhost:3000/api
+          code() { curl -sS -o /dev/null -w '%{http_code}' "$@"; }
+          forged=$(head -c 32 /dev/urandom | base64 | tr '+/' '-_' | tr -d '=\n')
+          test "${#forged}" = 43
+          test "$(code -H "Cookie: aangan_session=$forged" "$api/auth/me")" = 401
+          test "$(curl -sS -o /dev/null -w '%{http_code}' -c expiring.jar -X POST "$api/auth/login" \
+            -H 'Origin: http://localhost:3000' -H 'Content-Type: application/json' \
+            -d '{"email":"donor@himalayacc.example","password":"donor12345"}')" = 200
+          test "$(code -b expiring.jar "$api/auth/me")" = 200
+          docker compose exec -T db sh -c 'psql -U "$POSTGRES_USER" -d "$POSTGRES_DB" -tAc "$1"' _ \
+            "update sessions set expires_at = now() - interval '1 second' where donor_id = (select id from donors where email = 'donor@himalayacc.example')"
+          curl -sS -b expiring.jar "$api/auth/me" -o expired.json -w '%{http_code}' | grep -qx 401
+          grep -q '"code":"unauthenticated"' expired.json
+      # The mock provider's two failure tokens, through nginx. A decline is a 402. A timeout is
+      # a 202 with the donation still pending: the money may have moved, so it is never failed. --max-time is above the API's own 5 s provider timeout.
+      - name: Payment outcomes
+        run: |
+          api=http://localhost:3000/api
+          give() {
+            curl -sS --max-time 8 -o "$1.json" -w '%{http_code}' -X POST "$api/donations" \
+              -H 'Content-Type: application/json' -H "Idempotency-Key: $(node -p 'crypto.randomUUID()')" \
+              -d "{\"campaignSlug\":\"aangan-courtyard\",\"amountCents\":2500,\"donor\":{\"fullName\":\"CI Outcome\",\"email\":\"ci@example.com\"},\"privacyMode\":\"public\",\"paymentToken\":\"$2\"}"
+          }
+          test "$(give decline tok_decline)" = 402
+          grep -q '"code":"card_declined"' decline.json
+          test "$(give timeout tok_timeout)" = 202
+          grep -q '"status":"pending"' timeout.json
+      # Last, because it exhausts the buckets for every later request from this address. Wrong
+      # passwords until the login limit answers, then key-less POSTs (each a 400 before any
+      # charge) until the donation limit does. The caps leave room for earlier steps' requests,
+      # so this proves the limits fire within the defaults, not their exact values.
+      - name: Rate limits
+        run: |
+          api=http://localhost:3000/api
+          hit() {
+            max=$1; shift
+            for i in $(seq 1 "$max"); do
+              status=$(curl -sS -D limit.headers -o limit.json -w '%{http_code}' "$@")
+              test "$status" = 429 && return 0
+            done
+            return 1
+          }
+          hit 21 -X POST "$api/auth/login" -H 'Origin: http://localhost:3000' \
+            -H 'Content-Type: application/json' -d '{"email":"nobody@himalayacc.example","password":"wrong-password"}'
+          grep -q '"code":"rate_limited"' limit.json
+          grep -qi '^retry-after: [0-9]' limit.headers
+          hit 31 -X POST "$api/donations" -H 'Content-Type: application/json' -d '{}'
+          grep -q '"code":"rate_limited"' limit.json
+          grep -qi '^retry-after: [0-9]' limit.headers
       - name: Logs on failure
         if: failure()
         run: docker compose logs

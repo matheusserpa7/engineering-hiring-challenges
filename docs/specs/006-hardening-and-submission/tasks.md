@@ -80,6 +80,12 @@ the API's own 404 and the SPA still pass through. Spec change in fact, not decis
 location fails with "empty URI in redirect" when URI parsing fails, so `error_page` points at
 internal paths `/_errors/400` and `/_errors/413` (tech spec §3 showed `@bad_request`). Self-review.
 
+**T3.** Each step green locally; red without the `UPDATE` (Sessions) and with both limits at 100
+(Rate limits). Reviewer: no blockers; five minors, all comment accuracy or drift, fixed (the rate
+step proves the limits fire within the defaults, not their exact values). Accepted: the Sessions
+`UPDATE` expires all of `donor@`'s sessions, so T6's e2e step must log in fresh; compose and
+`config.ts` both hold the defaults 30 and 20.
+
 ## Optional (only with time left)
 
 nginx JSON for 502/504 · gitleaks in CI · `Cache-Control: no-cache` on `index.html` ·
