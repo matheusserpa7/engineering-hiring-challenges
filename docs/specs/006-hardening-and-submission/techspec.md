@@ -38,15 +38,15 @@ docs/specs/006-hardening-and-submission/checklist.md  CHECKLIST evidence (G11)
 
 ```nginx
 # server level: an undecodable escape fails URI parsing before any location is chosen (G2)
-error_page 400 @bad_request;
-location @bad_request {
+error_page 400 /_errors/400;
+location = /_errors/400 {   # internal; a named location has no URI to redirect from
     default_type application/json;
     add_header X-Content-Type-Options "nosniff" always;
     return 400 '{"error":{"code":"bad_request","message":"The request could not be processed."}}';
 }
 location /api/ {
     client_max_body_size 64k;            # the API's own limit is 16 kB; no reason to buffer 1 MB
-    error_page 413 @payload_too_large;   # same pattern, the API's payload_too_large body
+    error_page 413 /_errors/413;   # same pattern, the API's payload_too_large body
     …existing proxy lines…
 }
 ```

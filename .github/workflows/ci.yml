@@ -124,6 +124,24 @@ jobs:
           # गुरुङ, percent-encoded so no locale can turn it into question marks.
           curl -fsS -b admin.jar "$api/admin/donations?q=%E0%A4%97%E0%A5%81%E0%A4%B0%E0%A5%81%E0%A4%99" |
             grep -q 'HCC-2026-000002'
+      # nginx answers some requests itself, before the API sees them: an undecodable percent
+      # escape and an oversized body. Those must be the same JSON envelope the API sends, so
+      # each is compared byte for byte with the API's own answer on :4000.
+      - name: nginx errors
+        run: |
+          bad='/api/campaigns/%E0%A4%A'
+          { printf '{"x":"'; head -c 70000 /dev/zero | tr -c a a; printf '"}'; } > big.json
+          test "$(curl -sS -o web400 -w '%{http_code}' "http://localhost:3000$bad")" = 400
+          test "$(curl -sS -o api400 -w '%{http_code}' "http://localhost:4000$bad")" = 400
+          cmp web400 api400
+          # logout has no limiter, so this costs none of the rate-limit budget.
+          for port in 3000 4000; do
+            test "$(curl -sS -o "out$port" -w '%{http_code}' -X POST "http://localhost:$port/api/auth/logout" \
+              -H 'Origin: http://localhost:3000' -H 'Content-Type: application/json' \
+              --data-binary @big.json)" = 413
+          done
+          cmp out3000 out4000
+          grep -q payload_too_large out3000
       - name: Logs on failure
         if: failure()
         run: docker compose logs

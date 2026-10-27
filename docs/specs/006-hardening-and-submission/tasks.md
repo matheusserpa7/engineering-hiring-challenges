@@ -14,7 +14,7 @@ T2's 413 → T3 (by hand in T11) → T6 (e2e stays local) → T5's `refund` spec
   - Files: `eslint.config.js`, `apps/web/test/lint-rules.test.ts`. Test: tech spec §2, red today.
   - Mutations: drop each new entry; drop the repeated money entries (the `toFixed` row goes red).
   - Done: repo lint clean. Commit: `build(lint): ban innerHTML in templates and code` · Depends: —
-- [ ] **T2 — nginx: JSON 400 and 413** (~30 min) · self-review (infra, < 30 lines)
+- [x] **T2 — nginx: JSON 400 and 413** (~30 min) · self-review (infra, < 30 lines)
   - Files: `apps/web/nginx.conf`, `.github/workflows/ci.yml` (step *nginx errors*).
   - Test: the step on local compose, red on today's image, green after, `cmp` with `:4000`.
   - Commit: `fix(web): answer nginx 400 and 413 as JSON` · Depends: —
@@ -74,6 +74,11 @@ T1 → T4 → T5 → T6; T2 → T3 → T6; T2 → T7. T6 + T7 → T8 → T9 → 
 **T1.** Red before the change (9 of 13 failed). Dropping the repeated money entries turns the
 `toFixed` row red. Self-review only; lint, format, typecheck and web tests (190) pass. The script
 ban covers `apps/web/src/**` only, so component tests can still read `innerHTML`.
+
+**T2.** Red on today's image (HTML 400), green after; the 413 is `cmp`-equal with `:4000`, and
+the API's own 404 and the SPA still pass through. Spec change in fact, not decision: a *named*
+location fails with "empty URI in redirect" when URI parsing fails, so `error_page` points at
+internal paths `/_errors/400` and `/_errors/413` (tech spec §3 showed `@bad_request`). Self-review.
 
 ## Optional (only with time left)
 
