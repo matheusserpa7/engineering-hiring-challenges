@@ -61,7 +61,20 @@ And the donation intake contract (`src/donations.ts`, spec 004):
   `request_in_progress`, `card_declined`, `insufficient_funds`, `payment_provider_error`,
   `campaign_closed`, `amount_out_of_range`, `rate_limited`.
 
-Auth schemas arrive with spec 005.
+And the auth and donor-record contracts (`src/auth.ts`, `src/donor-records.ts`, spec 005):
+
+- `LoginRequestSchema`: `{ email, password }`, strict, so a `role` is a 422. The email is
+  NFC, trimmed and lower-cased; the password is only length-checked (1 to 256 code points).
+  `SessionResponseSchema`: `{ user: { id, email, fullName, role } }`.
+- `DonationDetailSchema`: what a donor sees of their own donation. `AdminDonationSchema` adds
+  `donorEmail` and `failureCode`; `AdminDonationPageSchema` is the `{ data, page, pageSize,
+  total, totalPages }` envelope. All strict.
+- `AdminDonationQuerySchema`: `q`, `status`, `sort`, `dir`, `page`, `pageSize` as strings from
+  the URL. Digits are matched before they become numbers (`'1e1'` is rejected), a blank `q` is
+  dropped, and a repeated key is a 422. `RefundRequestSchema`: `{ reason }`, 1 to 500 code
+  points, line breaks allowed.
+- Six error codes join the list: `unauthenticated`, `forbidden`, `invalid_credentials`,
+  `already_refunded`, `not_refundable`, `origin_not_allowed`.
 
 Both apps import the **built** output (`dist/`, ESM plus `.d.ts`), the same way in dev,
 tests and Docker.

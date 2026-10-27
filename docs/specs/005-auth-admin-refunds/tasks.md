@@ -8,7 +8,7 @@ commit message → Matheus says go → commit. `Refs: spec-005/Tn` last.
 T10's smoke (moves to 006) → F3 paging (back to S0) → the timing-ratio test (keep the
 byte-identical one). T3, T4 and T6 are never cut.
 
-- [ ] **T1 — Shared: auth and donor-record contract** (~25 min) · reviewer: yes (validation)
+- [x] **T1 — Shared: auth and donor-record contract** (~25 min) · reviewer: yes (validation)
   - Files: `packages/shared/src/{auth.ts,donor-records.ts,errors.ts,index.ts}`,
     `packages/shared/test/auth.test.ts`, `packages/shared/README.md`
   - Test: tech spec §9 row 1. Red: modules missing.
@@ -104,3 +104,10 @@ T1 → T2 → T3 → T4 → T5 → T6 on the API. Web: T7 after T3; T8 after T7 
 and T6. T10 last. T7 can run alongside T4–T6.
 
 ## Notes recorded during execution
+
+**T1.** Dropping `.strict()` on the query, `z.coerce.number()` for `page` and `.length` for the
+reason each fail a test. Review: the NFC test for `q` used a string that was already NFC, now
+`e` + U+0301; a reason of only U+200B/U+2060 is refused (`blank_reason`); the status list is
+`DONATION_STATUSES`. Accepted: `q` stays as `undefined` when blank, so callers test
+`q !== undefined`; `page` takes leading zeros (`'007'`), matching §5's regex. For T5/T9: the web
+client must not send empty `status`, `sort` or `dir` (422).

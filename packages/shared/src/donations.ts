@@ -30,11 +30,11 @@ export function normaliseName(value: string): string {
 }
 
 // Separators are already spaces when this runs, so what is left is a real control character.
-const CONTROL = /\p{Cc}/u;
+export const CONTROL = /\p{Cc}/u;
 // A message may hold line breaks; any other control character is rejected.
-const CONTROL_EXCEPT_LINE_BREAK = /(?![\n\r])\p{Cc}/u;
+export const CONTROL_EXCEPT_LINE_BREAK = /(?![\n\r])\p{Cc}/u;
 
-function boundedText(min: number, max: number) {
+export function boundedText(min: number, max: number) {
   return (value: string, ctx: z.RefinementCtx): void => {
     const length = codePointLength(value);
     if (length < min) {
@@ -63,7 +63,7 @@ const NameSchema = z
   .superRefine(boundedText(1, MAX_NAME_CODE_POINTS))
   .refine((value) => !CONTROL.test(value), { message: 'invalid_characters' });
 
-const EmailSchema = z
+export const EmailSchema = z
   .string()
   .transform((value) => value.normalize('NFC').trim().toLowerCase())
   .pipe(z.email().max(MAX_EMAIL_LENGTH));

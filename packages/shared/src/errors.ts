@@ -17,6 +17,12 @@ export const ERROR_CODES = [
   'campaign_closed',
   'amount_out_of_range',
   'rate_limited',
+  'unauthenticated',
+  'forbidden',
+  'invalid_credentials',
+  'already_refunded',
+  'not_refundable',
+  'origin_not_allowed',
   'internal_error',
 ] as const;
 
