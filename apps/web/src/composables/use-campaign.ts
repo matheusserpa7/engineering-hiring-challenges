@@ -17,19 +17,25 @@ const RECENT_LIMIT = 20;
 
 // The campaign and its list are one page: a half-rendered page would need two sets of states
 // for no visitor benefit, so they load together and fail together.
-export function useCampaign(slug: () => string): { state: Ref<CampaignState>; retry: () => void } {
+export function useCampaign(slug: () => string): {
+  state: Ref<CampaignState>;
+  retry: () => void;
+  refresh: () => void;
+} {
   const state = shallowRef<CampaignState>({ status: 'loading' });
   let latest = 0;
   let controller: AbortController | undefined;
 
-  async function load(): Promise<void> {
+  // A silent load keeps the page on screen: after a gift the totals change in place, with no
+  // loading state, and a failed refresh leaves the old numbers rather than an error page.
+  async function load(silent = false): Promise<void> {
     controller?.abort();
     controller = new AbortController();
     const { signal } = controller;
     // The counter, not the abort, is what keeps a late response off the screen: an abort only
     // saves bandwidth, and a response can resolve in the same tick it is aborted.
     const request = ++latest;
-    state.value = { status: 'loading' };
+    if (!silent) state.value = { status: 'loading' };
 
     const path = `/api/campaigns/${encodeURIComponent(slug())}`;
     try {
@@ -41,7 +47,7 @@ export function useCampaign(slug: () => string): { state: Ref<CampaignState>; re
       ]);
       if (request === latest) state.value = { status: 'ready', campaign, donations: list.data };
     } catch (error) {
-      if (request !== latest) return;
+      if (request !== latest || silent) return;
       state.value =
         error instanceof ApiError && error.code === 'not_found'
           ? { status: 'not-found' }
@@ -55,5 +61,5 @@ export function useCampaign(slug: () => string): { state: Ref<CampaignState>; re
     controller?.abort();
   });
 
-  return { state, retry: () => void load() };
+  return { state, retry: () => void load(), refresh: () => void load(true) };
 }

@@ -84,7 +84,7 @@ replay in T4 → T9's POST smoke (moves to 006). T4 is never cut.
   - Commit: `feat(web): add the donation form`
   - Depends on: T6
 
-- [ ] **T8 — Web: results on the campaign page** (~25 min) · reviewer: no, self-review
+- [x] **T8 — Web: results on the campaign page** (~25 min) · reviewer: no, self-review
   - Files: `apps/web/src/{components/donation-result.vue,views/campaign-page.vue,composables/use-campaign.ts}`,
     `apps/web/test/{donation-result,campaign-page}.test.ts`
   - Test first: PRD US-1 criterion 1, US-3 screens, US-6. Red: no Donate link, no result.
@@ -168,3 +168,10 @@ T7 follows T6, T8 needs T7 and T4 (the 409 screen). T9 last.
     donor sees validated is what is sent. No `maxlength` on the message: it counts UTF-16 units.
   - For T8: the form takes `campaign` and `busy` and emits `submit`; server-side field errors
     (`rejected.details`) are not mapped to fields, the result screen shows the message.
+- T8, done. Test-first: red because there was no Donate link, no result component (web 94 → 110).
+  - The refresh test first passed with the loading-state mutation in place; it now checks while
+    the second read is still pending, and that mutation fails it. Self-review only, as tasked.
+  - Checked on compose at 375 px: `tok_ok` moved the total by $21 and showed the receipt;
+    `tok_decline`, `tok_flaky` (201), `tok_timeout` (202, pending screen) each showed their
+    screen; no horizontal overflow; the only console error was the expected 402.
+  - After a success the form is replaced by the receipt; after a failure it stays with its values.

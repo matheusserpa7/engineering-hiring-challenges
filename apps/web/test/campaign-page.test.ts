@@ -255,4 +255,123 @@ describe('campaign-page', () => {
     expect(wrapper.get('h1').text()).toBe('Second campaign');
     expect(document.title).toBe('Second campaign');
   });
+
+  describe('donating', () => {
+    const RECEIPT = {
+      id: '33333333-3333-4333-8333-333333333333',
+      receiptNumber: 'HCC-2026-000076',
+      amountCents: 10_100,
+      currency: 'USD',
+      status: 'completed',
+      createdAt: '2026-10-27T12:00:00.000Z',
+    };
+
+    async function give(wrapper: ReturnType<typeof mountPage>, token = 'tok_ok'): Promise<void> {
+      await wrapper.get('input[name="amount"][value="5000"]').setValue(true);
+      await wrapper.get('input[name="fullName"]').setValue('Anisha Gurung');
+      await wrapper.get('input[name="email"]').setValue('anisha@example.com');
+      await wrapper.get('select[name="paymentToken"]').setValue(token);
+      await wrapper.get('form').trigger('submit');
+      await flushPromises();
+    }
+
+    it('links to the form only when the campaign is open', async () => {
+      stubApi(happy('aangan-courtyard'));
+      const open = mountPage();
+      await flushPromises();
+      expect(open.get('a[href="#donate"]').text()).toContain('Donate');
+      expect(open.find('form').exists()).toBe(true);
+
+      for (const phase of ['closed', 'upcoming'] as const) {
+        stubApi(happy('aangan-courtyard', { phase }));
+        const wrapper = mountPage();
+        await flushPromises();
+        expect(wrapper.find('a[href="#donate"]').exists()).toBe(false);
+        expect(wrapper.find('form').exists()).toBe(false);
+      }
+    });
+
+    it('shows the receipt and keeps the page up while the totals refresh', async () => {
+      const refreshed = deferred();
+      let reads = 0;
+      stubApi({
+        ...routes('aangan-courtyard', {
+          campaign: () =>
+            ++reads === 1 ? json(campaign({ raisedCents: 4_305_800 })) : refreshed.promise,
+          donations: () => json({ data: [donation({ displayName: 'Anisha G.' })] }),
+        }),
+        '/api/donations': () => json(RECEIPT, 201),
+      });
+      const wrapper = mountPage();
+      await flushPromises();
+      expect(wrapper.text()).toContain('$43,058.00');
+
+      await give(wrapper);
+
+      expect(wrapper.text()).toContain('Thank you');
+      expect(wrapper.text()).toContain('HCC-2026-000076');
+      expect(wrapper.find('[role="status"]').exists()).toBe(false);
+      expect(wrapper.text()).toContain('$43,058.00');
+
+      refreshed.resolve(json(campaign({ raisedCents: 4_310_800, donorCount: 47 })));
+      await flushPromises();
+      expect(wrapper.text()).toContain('$43,108.00');
+    });
+
+    it('keeps the form and its values after a decline', async () => {
+      stubApi({
+        ...happy('aangan-courtyard'),
+        '/api/donations': () => json(errorBody('card_declined', 'Declined.'), 402),
+      });
+      const wrapper = mountPage();
+      await flushPromises();
+
+      await give(wrapper, 'tok_decline');
+
+      expect(wrapper.text()).toContain('No money was taken');
+      expect(wrapper.get<HTMLInputElement>('input[name="fullName"]').element.value).toBe(
+        'Anisha Gurung',
+      );
+    });
+
+    it('shows the pending screen for a 202', async () => {
+      stubApi({
+        ...happy('aangan-courtyard'),
+        '/api/donations': () => json({ ...RECEIPT, status: 'pending' }, 202),
+      });
+      const wrapper = mountPage();
+      await flushPromises();
+
+      await give(wrapper, 'tok_timeout');
+
+      expect(wrapper.text()).toContain('confirming your payment');
+      expect(wrapper.text()).toContain('HCC-2026-000076');
+    });
+
+    it('resubmits the same body under the same key after a network failure', async () => {
+      let posts = 0;
+      stubApi({
+        ...happy('aangan-courtyard'),
+        '/api/donations': () => {
+          if (++posts === 1) throw new TypeError('Failed to fetch');
+          return json(RECEIPT, 201);
+        },
+      });
+      const wrapper = mountPage();
+      await flushPromises();
+      await give(wrapper);
+      expect(wrapper.text()).toContain('We couldn’t reach the server');
+
+      await wrapper.get('[data-testid="donation-result"] button').trigger('click');
+      await flushPromises();
+
+      const keys = vi
+        .mocked(fetch)
+        .mock.calls.filter(([url]) => url === '/api/donations')
+        .map(([, init]) => (init?.headers as Record<string, string>)['Idempotency-Key']);
+      expect(keys).toHaveLength(2);
+      expect(keys[1]).toBe(keys[0]);
+      expect(wrapper.text()).toContain('Thank you');
+    });
+  });
 });
