@@ -1,5 +1,5 @@
 import { afterEach, describe, expect, it } from 'vitest';
-import { donorCountLabel, formatCampaignDate, relativeTime } from '../src/format';
+import { avatarInitial, donorCountLabel, formatCampaignDate, relativeTime } from '../src/format';
 
 const NOW = Date.parse('2026-10-26T12:00:00Z');
 const SECOND = 1000;
@@ -65,5 +65,18 @@ describe('donorCountLabel', () => {
     [1234, '1,234 donors'],
   ])('%i reads %s', (count, expected) => {
     expect(donorCountLabel(count)).toBe(expected);
+  });
+});
+
+describe('avatarInitial', () => {
+  it.each([
+    ['Anisha Gurung', 'A'],
+    ['अनिशा गुरुङ', 'अ'],
+    ['Anonymous', 'A'],
+    ['The Gurung family', 'T'],
+    ['👩🏽‍🦳 Aama', '👩🏽‍🦳'],
+    ['', '·'],
+  ])('%s starts with %s', (name, expected) => {
+    expect(avatarInitial(name)).toBe(expected);
   });
 });

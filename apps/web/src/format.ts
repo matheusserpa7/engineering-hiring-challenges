@@ -36,3 +36,12 @@ export function formatCampaignDate(iso: string): string {
 export function donorCountLabel(donors: number): string {
   return `${count.format(donors)} ${donors === 1 ? 'donor' : 'donors'}`;
 }
+
+const graphemes = new Intl.Segmenter(undefined, { granularity: 'grapheme' });
+
+// The first grapheme, not the first code point: a Devanagari cluster or a ZWJ emoji must not be
+// cut in half. Display only, so it never parses "The … family".
+export function avatarInitial(displayName: string): string {
+  const first = graphemes.segment(displayName.trim())[Symbol.iterator]().next();
+  return first.done ? '·' : first.value.segment;
+}
