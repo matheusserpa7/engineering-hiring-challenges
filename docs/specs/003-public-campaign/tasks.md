@@ -87,7 +87,7 @@ cut.
   - Commit: `feat(web): show the campaign page with its states`
   - Depends on: T5, T3 (for the manual check against real data)
 
-- [ ] **T7 — Stack smoke and progress** (~10 min)
+- [x] **T7 — Stack smoke and progress** (~10 min)
   - Files: `.github/workflows/ci.yml`, `docs/PROGRESS.md`
   - Test first: run the new smoke lines locally against the compose stack with negative
     controls (expect 4305801; expect an email present) and see both fail.
@@ -166,3 +166,9 @@ after T4, T6 after T5. T7 last.
   - Spec correction, no decision changed: rows 9 and 10 (the XSS payloads) sit at positions 42
     and 43 of 49, so the page's 20 newest never show them, nor row 14. Their rendering stays
     proven by the component tests; in a real browser it moves to the e2e in 006.
+- T7, done. Negative controls on the rebuilt compose stack: `4305801` and a planted `@` both
+  fail the new lines; the positive run passes through `:3000`.
+  - No `code-reviewer`: CI and docs only, under 30 lines; self-reviewed.
+  - `:3000` renders the page; the only console line is a truncated "script-src not set" note
+    with no inline script in the served HTML, so it comes from the pane's own injection.
+  - The CI run itself waits for a push, which only the user asks for.

@@ -4,19 +4,17 @@ Where the work stands, and what comes next. Updated whenever a task or a session
 The plan itself lives in [`specs/000-overview/tasks.md`](specs/000-overview/tasks.md). This
 file is only the current position.
 
-Last updated: 2026-10-26
+Last updated: 2026-10-27
 
 ## Resume here
 
-**Spec 002 is implemented (6 / 6). Close it, then start spec 003.**
+**Spec 003 is implemented (7 / 7). Close it, then start spec 004.**
 
 1. Read [`CLAUDE.md`](../CLAUDE.md), then this file.
-2. Close spec 002: run the `qa-verifier` agent (clean compose run plus the matching part of
-   `CHECKLIST.md`), then push so CI checks the seeded stack, and record the green run here.
-   Push only when the user asks.
-3. Spec 003 (public campaign page and donation list) is not written. Start it with the
-   `spec-writer` agent: PRD, tech spec and tasks, then stop for the user's ok. Read the
-   forward notes below first.
+2. Close spec 003: push when the user asks, so CI runs the new `Public campaign API` smoke
+   step, and record the green run here. Run the `qa-verifier` agent if the user wants it.
+3. Spec 004 (donation intake) is not written. Start it with the `spec-writer` agent: PRD,
+   tech spec and tasks, then stop for the user's ok. Read the forward notes below first.
 4. Follow the per-task flow in `CLAUDE.md`. Commit only when the user says so.
 
 ## Phases
@@ -26,7 +24,7 @@ Last updated: 2026-10-26
 | 0 — Understanding | Read the brief, rubric, checklist and docs 00–11; verify the seed data; list ambiguities | Done |
 | 1 — Overview | [PRD](specs/000-overview/prd.md), [Tech Spec](specs/000-overview/techspec.md), [Tasks](specs/000-overview/tasks.md), [ADRs 0001–0005](adr/) | Done · `02b074f` |
 | 2 — Foundation | [Spec 001](specs/001-foundation/): workspaces, tooling, CLAUDE.md, subagents, hook, Docker stack, CI | Done · CI green: [run 40324681629](https://github.com/matheusserpa7/engineering-hiring-challenges/actions/runs/40324681629) |
-| 3 — Features | Specs 002–005 (must-haves), then the status report | **In progress: spec 002 done (6 of 6), specs 003–005 to go** |
+| 3 — Features | Specs 002–005 (must-haves), then the status report | **In progress: specs 002 and 003 implemented, specs 004–005 to go** |
 | 4 — Submission | Spec 006: hardening, e2e, READMEs, AI-USAGE.md, clean-clone rehearsal, video | Not started |
 
 ## Specs
@@ -36,7 +34,7 @@ Last updated: 2026-10-26
 | 000-overview | Approved, committed | — |
 | 001-foundation | Done, pushed, CI green | 10 / 10 |
 | 002-data-and-money | Approved (`e6dba0e`), implemented, not yet closed by QA or CI | **6 / 6** (T1 `5244ca5` · T2 `27f850e` · T3 `b9cfb7b` · T4 `621646b` · T5 `a50f445` · T6 in the next commit) |
-| 003-public-campaign | Not written | — |
+| 003-public-campaign | Implemented, not yet pushed or closed by CI | **7 / 7** (T1–T6 committed, T7 in the next commit) |
 | 004-donation-intake | Not written | — |
 | 005-auth-admin-refunds | Not written | — |
 | 006-hardening-and-submission | Not written | — |
@@ -93,16 +91,14 @@ Last updated: 2026-10-26
 From [spec 001's task notes](specs/001-foundation/tasks.md):
 
 - 002 (done in T6): shared's runtime dependency is in the API image;
-  `import('@aangan/shared')` works there. Still open: test the undecodable URL parameter
-  case once a route has a parameter (spec 003).
-- 003: `trust proxy` set to `1`, not `true`.
-- 003, first asset: Vite inlines small assets as `data:` URLs, which the CSP blocks.
+  `import('@aangan/shared')` works there.
+- 004: `trust proxy` set to `1`, not `true`, when the rate limiter needs the client IP (spec 003 D1 moved it here).
 - 004: keep the `?q=` search out of the access log.
 - 005: helmet CSP `default-src 'none'`; the `Origin` allow-list includes `:5173` in dev.
 
 From [spec 002's task notes](specs/002-data-and-money/tasks.md):
 
-- 003: the pool parses `int8` and `int8[]` into safe numbers; `numeric` stays a string, so
+- Done in 003: the pool parses `int8` and `int8[]` into safe numbers; `numeric` stays a string, so
   an uncast `SUM()` fails loudly. Cast every aggregate `::bigint`.
 - 004: the receipt sequence continues from 76 (`receipt_number_seq`). The pool's `pg`
   errors carry the failing row in `detail`; the logger's `err` serializer drops it, so log

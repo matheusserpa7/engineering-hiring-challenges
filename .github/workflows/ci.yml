@@ -43,6 +43,16 @@ jobs:
           curl -fsS http://localhost:4000/api/health | grep -q '"status":"ok"'
           curl -fsS http://localhost:3000/api/health | grep -q '"status":"ok"'
           curl -fsS http://localhost:3000/ | grep -q '<div id="app">'
+      # Through nginx, so a broken proxy path fails here. The totals are derived from the seed;
+      # the list at its maximum size must carry no email and not row 5's name (anonymous).
+      - name: Public campaign API
+        run: |
+          curl -fsS http://localhost:3000/api/campaigns/aangan-courtyard > campaign.json
+          grep -q '"raisedCents":4305800' campaign.json
+          grep -q '"donorCount":46' campaign.json
+          curl -fsS 'http://localhost:3000/api/campaigns/aangan-courtyard/donations?limit=50' > donations.json
+          ! grep -q '@' donations.json
+          ! grep -q 'Ramesh Thapa' donations.json
       # The two numbers from the seed README: 75 rows, and 4,305,800 cents of completed gifts
       # for the Aangan campaign. The psql runs inside the db container, so it uses the same
       # credentials the stack was started with. A restart seeds again and must change neither:
