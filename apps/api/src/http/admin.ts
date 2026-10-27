@@ -1,7 +1,8 @@
-import { AdminDonationQuerySchema } from '@aangan/shared';
+import { AdminDonationQuerySchema, RefundRequestSchema } from '@aangan/shared';
 import { Router, type RequestHandler } from 'express';
 import type { AuthDeps } from '../services/auth.js';
 import { listAdminDonations } from '../services/donor-records.js';
+import { refundAs } from '../services/refunds.js';
 import { noStore, requireRole, requireSession, viewerOf } from './session.js';
 import { parseInput } from './validate.js';
 
@@ -18,6 +19,12 @@ export function createAdminRouter(deps: AuthDeps): Router {
   router.get('/donations', async (req, res) => {
     const query = parseInput(AdminDonationQuerySchema, req.query, 'query');
     res.json(await listAdminDonations(deps.db, { viewer: viewerOf(req), query }));
+  });
+
+  router.post('/donations/:id/refund', async (req, res) => {
+    const { reason } = parseInput(RefundRequestSchema, req.body, 'body');
+    // The actor is the session's admin, never a field of the request.
+    res.json(await refundAs(deps.db, viewerOf(req), req.params.id, reason));
   });
 
   return router;

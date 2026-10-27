@@ -116,6 +116,28 @@ function adminWhere({ viewerId, isAdmin, query }: AdminListArgs) {
   return sql<boolean>`${sql.join(conditions, sql` and `)}`;
 }
 
+function toAdminDonation(
+  row: Parameters<typeof toDonationDetail>[0] & {
+    donor_email: string;
+    failure_code: string | null;
+  },
+): AdminDonation {
+  return { ...toDonationDetail(row), donorEmail: row.donor_email, failureCode: row.failure_code };
+}
+
+// One row for the refund response. Admin-only, so there is no viewer scope to apply.
+export async function findAdminDonation(
+  db: Kysely<Database>,
+  id: string,
+): Promise<AdminDonation | undefined> {
+  const row = await donationDetailQuery(db)
+    .innerJoin('donors as p', 'p.id', 'd.donor_id')
+    .select(['p.email as donor_email', 'd.failure_code'])
+    .where('d.id', '=', id)
+    .executeTakeFirst();
+  return row && toAdminDonation(row);
+}
+
 // Exported so the test can EXPLAIN the exact statement.
 export function buildAdminDonationsQuery(db: Kysely<Database>, args: AdminListArgs) {
   const { sort, dir, page, pageSize } = args.query;
@@ -151,11 +173,7 @@ export async function listAdminDonationRows(
         .where(adminWhere(args))
         .executeTakeFirstOrThrow();
       return {
-        rows: rows.map((row) => ({
-          ...toDonationDetail(row),
-          donorEmail: row.donor_email,
-          failureCode: row.failure_code,
-        })),
+        rows: rows.map(toAdminDonation),
         total: count.total,
       };
     });

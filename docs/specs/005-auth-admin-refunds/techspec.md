@@ -185,7 +185,7 @@ are the same site, so `SameSite=Strict` alone does not stop a page on another lo
 | # | Chosen | Rejected | Why |
 |---|---|---|---|
 | F1 | Login limit per IP, every attempt counts (T3 review) | IP + email (000 §9); failures only | Needs the parsed body; rotating emails walks past it; refunding successes lets a public demo login reset the counter, so the IP would not bound scrypt work |
-| F2 | No `Idempotency-Key` on refund | Required key | `completed → refunded` is single-use, `refunds.donation_id` unique; no provider call |
+| F2 | No `Idempotency-Key` on refund | Required key | `completed → refunded` is single-use, `refunds.donation_id` unique; no provider call; docs/04 accepts "a key or a natural unique constraint" |
 | F3 | `page`/`pageSize` in 005 | Wait for S0 | An envelope with no page 2 hides rows from the office |
 | F4 | `ALLOWED_ORIGINS` list | One `CORS_ORIGIN` | Dev (`:5173`), compose (`:3000`) and `127.0.0.1` differ; one list feeds CORS and Origin |
 | F5 | Missing `Origin` allowed, `null` refused | Require `Origin` | Browsers always send it on POST; curl and CI don't, and carry no victim's cookie |

@@ -213,7 +213,6 @@ describe('/api/admin guard', () => {
       .send({ reason: 'I would like my money back' });
 
     expect(res.status).toBe(403);
-    // Starts to mean something when the refund route lands (T6); until then it is a 404 anyway.
     const row = await pool.query<{ status: string }>('SELECT status FROM donations WHERE id = $1', [
       idOf(mine[0] ?? ''),
     ]);
