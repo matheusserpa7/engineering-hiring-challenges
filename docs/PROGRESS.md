@@ -8,14 +8,14 @@ Last updated: 2026-10-27
 
 ## Resume here
 
-**Spec 004 is implemented (9 / 9). Push when the user asks, so CI runs the new smoke steps, then
-start spec 005.**
+**Spec 005 is implemented (10 / 10). Push when the user asks, so CI runs the new `Login and ownership`
+step, record the green run, then run the `qa-verifier` and start spec 006.**
 
 1. Read [`CLAUDE.md`](../CLAUDE.md), then this file.
-2. Close specs 002–004: push when the user asks, so CI runs the stack job (seed, public API and
-   the new `Donation intake` step), and record the green run here. Run the `qa-verifier` agent
-   if the user wants it.
-3. Spec 005 (auth, admin, refunds) is not written. Start it with the `spec-writer` agent: PRD,
+2. Close specs 002–005: push when the user asks, so CI runs the stack job (seed, public API,
+   `Donation intake`, `Login and ownership`), and record the green run here. Run the `qa-verifier`
+   agent if the user wants it.
+3. Spec 006 (hardening and submission) is not written. Start it with the `spec-writer` agent: PRD,
    tech spec and tasks, then stop for the user's ok. Read the forward notes below first.
 4. Follow the per-task flow in `CLAUDE.md`. Commit only when the user says so.
 
@@ -26,7 +26,7 @@ start spec 005.**
 | 0 — Understanding | Read the brief, rubric, checklist and docs 00–11; verify the seed data; list ambiguities | Done |
 | 1 — Overview | [PRD](specs/000-overview/prd.md), [Tech Spec](specs/000-overview/techspec.md), [Tasks](specs/000-overview/tasks.md), [ADRs 0001–0005](adr/) | Done · `02b074f` |
 | 2 — Foundation | [Spec 001](specs/001-foundation/): workspaces, tooling, CLAUDE.md, subagents, hook, Docker stack, CI | Done · CI green: [run 40324681629](https://github.com/matheusserpa7/engineering-hiring-challenges/actions/runs/40324681629) |
-| 3 — Features | Specs 002–005 (must-haves), then the status report | **In progress: specs 002 and 003 implemented, specs 004–005 to go** |
+| 3 — Features | Specs 002–005 (must-haves), then the status report | **Specs 002–005 implemented; the status report is left** |
 | 4 — Submission | Spec 006: hardening, e2e, READMEs, AI-USAGE.md, clean-clone rehearsal, video | Not started |
 
 ## Specs
@@ -36,37 +36,23 @@ start spec 005.**
 | 000-overview | Approved, committed | — |
 | 001-foundation | Done, pushed, CI green | 10 / 10 |
 | 002-data-and-money | Approved (`e6dba0e`), implemented, not yet closed by QA or CI | **6 / 6** (T1 `5244ca5` · T2 `27f850e` · T3 `b9cfb7b` · T4 `621646b` · T5 `a50f445` · T6 in the next commit) |
-| 003-public-campaign | Implemented, not yet pushed or closed by CI | **7 / 7** (T1–T6 committed, T7 in the next commit) |
-| 004-donation-intake | Implemented, not yet pushed or closed by CI | **9 / 9** |
-| 005-auth-admin-refunds | Not written | — |
+| 003-public-campaign | Implemented, pushed | **7 / 7** |
+| 004-donation-intake | Implemented, pushed | **9 / 9** |
+| 005-auth-admin-refunds | Implemented, not yet pushed or closed by CI | **10 / 10** (T1 `b58d10f` · T2 `5295230` · T3 `219cda5` · T4 `e3bf653` · T5 `826d46b` · T6 `bdc1aac` · T7 `00c6c7c` · T8 `458a061` · T9 `da7ecba` · T10 in the next commit) |
 | 006-hardening-and-submission | Not written | — |
 | 007 (S0) / 008 (X1) | Optional, only after 006 | — |
 
 ## Git state
 
-- Branch `main`, tracking `origin/main` on the user's fork.
-- **These commits are local and not yet pushed:**
-
-  ```
-  a50f445  feat(api): seed the campaign data on start                  spec-002/T5
-  621646b  feat(api): parse the seed files into validated records      spec-002/T4
-  b9cfb7b  feat(api): hash passwords with scrypt                       spec-002/T3
-  27f850e  feat(api): add the initial schema migration                 spec-002/T2
-  cc24a59  chore: pin a model and effort per agent stage               spec-009
-  97d3ad5  docs: make the resume point explicit for any agent
-  5244ca5  feat(shared): add exact dollar parsing and cent formatting  spec-002/T1
-  e6dba0e  docs: add spec 002 for data and money                       spec-002
-  f861d69  docs: close spec 001 and update the progress log            spec-001/T10
-  ```
-
-  The T6 commit follows them. Push only when the user asks. The plan is to push after
-  spec 002 T6, so CI checks the seeded stack.
-  (The `cc24a59` commit carries `Refs: spec-009/T1`, but spec 009 is a mini-spec with no
-  tasks file: it should read `Refs: spec-009`. Unpushed, so it can still be amended.)
+- Branch `main`, tracking `origin/main` on the user's fork. `origin/main` is at `60dcb91` (spec 004).
+- **Local and not yet pushed:** the spec 005 commits (`c442fcd` the spec, then T1–T10). Push only when
+  the user asks.
+- `tasks.md` of spec 005 was overwritten by a script in the T3 commit and restored in the T6 commit;
+  the history shows it. The T3 commit also changes decision F1 (login attempts all count).
 
 ## What exists now
 
-- `npm ci && npm test` runs 666 tests (shared 209, API 347, web 110). The API's integration tests
+- `npm ci && npm test` runs 940 tests (shared 275, API 488, web 177). The API's integration tests
   run against a real Postgres through Testcontainers, so they need Docker. `lint`,
   `typecheck` and `test` build the shared package first.
   - Without Docker: `npx vitest run --project unit`, from `apps/api`.
@@ -101,7 +87,7 @@ From [spec 001's task notes](specs/001-foundation/tasks.md):
   not forward that variable. Forward it in compose or keep e2e donations under the limit.
 - 006: pending donations are never reconciled with the provider (the mock has no lookup call);
   list it under Known issues.
-- 005: helmet CSP `default-src 'none'`; the `Origin` allow-list includes `:5173` in dev.
+- 005 (done in T2): helmet CSP `default-src 'none'`; the `Origin` allow-list includes `:5173` in dev.
 
 From [spec 002's task notes](specs/002-data-and-money/tasks.md):
 
@@ -110,12 +96,29 @@ From [spec 002's task notes](specs/002-data-and-money/tasks.md):
 - 004: the receipt sequence continues from 76 (`receipt_number_seq`). The pool's `pg`
   errors carry the failing row in `detail`; the logger's `err` serializer drops it, so log
   with `{ err }` and never build a message from `error.detail`.
-- 005: admin search must filter `email::text ILIKE …` to use the trigram index.
-- 005: apply the login rate limit before the hash. Node's thread pool runs 4 scrypt hashes
-  at once (~128 MiB each, ~17 logins/s measured), so give the container at least 1 GiB or
-  add a small semaphore; add the dummy-hash comparison for unknown emails.
-- 005: `verifyPassword` returns false for any derive failure, so a host short of memory would
-  make every login read as a wrong password. Watch the login failure rate.
+- 005 (done in T5): the email arm filters `email::text ILIKE …` in a subquery and uses the trigram
+  index. The name arm does not (the `OR` keeps a sequential scan on `donations`); a `UNION` of id
+  sets fixes it if the table grows.
+- 005 (done in T3): the login limiter runs before the hash, scrypt runs two at a time, unknown
+  emails verify against a dummy hash made at boot (a host short of memory fails at boot).
+  `verifyPassword` still returns false for any derive failure; watch the login failure rate.
+
+From [spec 005's task notes](specs/005-auth-admin-refunds/tasks.md), for spec 006:
+
+- Login attempts all count toward `LOGIN_RATE_LIMIT` (20 per address per 15 minutes, successes
+  included), and compose forwards no such variable. Behind Docker Desktop every local client may
+  share one bucket, so e2e that signs in often must stay under it or compose must forward it.
+- `vue/no-v-html` does not catch `:innerHTML`; add a lint rule. The admin and donor pages render
+  every donor-typed string as text and tests mutate this.
+- No automated browser test of login → refund → public total (done by hand at 375 px), and none
+  of WebKit with `Secure` cookies on `http://localhost`; `COOKIE_SECURE=false` is the fallback.
+- Known issues to list: a refund that meets a `pending` row intake completes a moment later is a
+  409 `not_refundable` (retry works); no lockout across many addresses on one account; signing in
+  as B in a browser holding A's cookie leaves A's session valid until it expires; name search
+  scans `donations` sequentially.
+- `/me/donations` returns the newest 100 with no paging; the admin list pages by 25.
+- A lost 200 on a refund followed by a retry shows 409 `already_refunded`, which the admin page
+  reads as done.
 
 ## Open items that aren't code
 

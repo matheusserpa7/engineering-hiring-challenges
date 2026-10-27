@@ -98,6 +98,27 @@ headers, gets 400s until it adds one.
 | Bad body, or outside the campaign's limits | 422 | `validation_failed`, `amount_out_of_range`, `campaign_closed`, `idempotency_key_mismatch` |
 | Over `DONATION_RATE_LIMIT` per 10 minutes | 429 | `rate_limited`, `Retry-After` |
 
+## Signing in, donor records and the admin
+
+Sessions are an `aangan_session` cookie (`HttpOnly`, `SameSite=Strict`, `Secure` unless
+`COOKIE_SECURE=false`) that lasts `SESSION_TTL_HOURS` (8) from the login. The token is 32 random
+bytes; only its SHA-256 is stored. Every request that changes state must come from an origin in
+`ALLOWED_ORIGINS` (compose builds the list from `WEB_PORT`), or it is a 403 `origin_not_allowed`.
+
+| Route | Who | Answers |
+|---|---|---|
+| `POST /api/auth/login` `{email, password}` | anyone | 200 `{user}` and the cookie; 401 `invalid_credentials` (one body for a wrong password, an unknown email and a guest); 429 after `LOGIN_RATE_LIMIT` (20) attempts per address in 15 minutes |
+| `POST /api/auth/logout` | signed in | 204 |
+| `GET /api/auth/me` | signed in | 200 `{user}` |
+| `GET /api/me/donations` | signed in | the viewer's own donations, newest 100 |
+| `GET /api/donations/:id` | owner or admin | 200; anyone else, and a missing or malformed id, get the same 404 |
+| `GET /api/admin/donations?q&status&sort&dir&page&pageSize` | admin | a page of every donation with the donor email; search matches a name or an email part |
+| `POST /api/admin/donations/:id/refund` `{reason}` | admin | 200; 409 `already_refunded` or `not_refundable`; no `Idempotency-Key`, the state change is single-use |
+
+No session is 401 and a donor on `/api/admin` is 403, both before a body is read. A refund flips
+`completed` to `refunded` and writes its audit row in one transaction, so 20 parallel refunds of one
+donation give one 200 and nineteen 409s. Totals are derived from the status, so they move with it.
+
 ## Demo accounts
 
 The seed creates these logins, and they are in plain text on purpose: the reviewers sign in

@@ -97,6 +97,33 @@ jobs:
           grep -qi '^idempotent-replayed: true' replay.headers
           cmp first.json replay.json
           test "$(raised)" = "$((before + 10100))"
+      # Login, ownership and the admin guard through nginx, with the seeded demo accounts. The
+      # 404 for another donor's row is checked next to a control: the admin reads that same id
+      # with 200, so the 404 is the ownership rule and not a wrong id. Nothing is refunded here.
+      - name: Login and ownership
+        run: |
+          api=http://localhost:3000/api
+          origin='Origin: http://localhost:3000'
+          login() {
+            body="{\"email\":\"$1@himalayacc.example\",\"password\":\"$2\"}"
+            test "$(curl -sS -o /dev/null -w '%{http_code}' -c "$1.jar" -X POST "$api/auth/login" \
+              -H "$origin" -H 'Content-Type: application/json' -d "$body")" = 200
+          }
+          code() { curl -sS -o /dev/null -w '%{http_code}' "$@"; }
+          login admin admin12345
+          login donor donor12345
+          grep -q HttpOnly admin.jar
+          test "$(curl -fsS -b donor.jar "$api/me/donations" | node -p "JSON.parse(require('fs').readFileSync(0, 'utf8')).data.length")" = 3
+          other=$(curl -fsS -b admin.jar --get --data-urlencode 'q=other@himalayacc' "$api/admin/donations" |
+            node -p "JSON.parse(require('fs').readFileSync(0, 'utf8')).data[0].id")
+          test "$(code -b donor.jar "$api/donations/$other")" = 404
+          test "$(code -b admin.jar "$api/donations/$other")" = 200
+          test "$(code -b donor.jar "$api/admin/donations")" = 403
+          test "$(code "$api/admin/donations")" = 401
+          test "$(code -b donor.jar -X POST -H 'Origin: https://evil.example' "$api/auth/logout")" = 403
+          # गुरुङ, percent-encoded so no locale can turn it into question marks.
+          curl -fsS -b admin.jar "$api/admin/donations?q=%E0%A4%97%E0%A5%81%E0%A4%B0%E0%A5%81%E0%A4%99" |
+            grep -q 'HCC-2026-000002'
       - name: Logs on failure
         if: failure()
         run: docker compose logs

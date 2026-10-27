@@ -92,7 +92,7 @@ byte-identical one). T3, T4 and T6 are never cut.
   - Commit: `feat(web): add the admin donation table and refunds`
   - Depends on: T7, T5, T6
 
-- [ ] **T10 — Stack smoke, README, progress** (~15 min) · self-review
+- [x] **T10 — Stack smoke, README, progress** (~15 min) · self-review
   - Files: `.github/workflows/ci.yml`, `apps/api/README.md`, `docs/PROGRESS.md`
   - Test: run the smoke lines on compose with a negative control (expect 200 for donor →
     other's id) and see it fail. Done: §9 last row in CI; README lists the routes and accounts.
@@ -175,3 +175,10 @@ text is interpolated; a 409 `already_refunded` reads as done and reloads the lis
 the session. Accepted: refunds are inline in the row (F13), not a modal; the search runs on submit,
 not while typing; `pageSize` is fixed at 25. The refund left the local database changed (reset it
 with `docker compose down -v`). For 006: add a lint rule for `:innerHTML`/`v-bind:innerHTML`.
+
+**T10.** The new CI step `Login and ownership` passes against the local compose stack and its negative
+control (expecting 200 for the donor reading another donor's id) fails, as it should. Self-review:
+the step refunds nothing, so the seed totals other steps read are untouched; the Devanagari search
+term is percent-encoded so no runner locale turns it into question marks. Not run in CI yet: it runs
+on the next push. `apps/api/README.md` lists the routes; `docs/PROGRESS.md` carries the forward
+notes for spec 006.
