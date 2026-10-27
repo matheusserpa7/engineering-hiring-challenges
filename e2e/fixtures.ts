@@ -51,3 +51,5 @@ export async function signIn(page: Page, who: { email: string; password: string 
   await page.getByLabel('Password').fill(who.password);
   await page.getByRole('button', { name: 'Sign in' }).click();
 }
+
+export const DONOR = { email: 'donor@himalayacc.example', password: 'donor12345' };
