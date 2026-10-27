@@ -56,9 +56,10 @@ cut.
   - Commit: `feat(web): validate API responses and format dates`
   - Depends on: T1
 
-- [ ] **T5 — Web: totals, progress bar and donation list** (~25 min)
+- [x] **T5 — Web: totals, progress bar and donation list** (~25 min)
   - Files: `apps/web/src/components/{progress-bar,campaign-totals,donation-list}.vue`,
-    `apps/web/test/{progress-bar,campaign-totals,donation-list}.test.ts`,
+    `apps/web/test/{progress-bar,campaign-totals,donation-list}.test.ts`, `apps/web/test/fixtures.ts`
+    (contract-shaped builders, shared with T6),
     `apps/web/vite.config.ts` (jsdom test environment), `apps/web/package.json` and
     `package-lock.json` (`@vue/test-utils`, `jsdom`, dev only; check `package.json` after
     the install, see Environment notes)
@@ -146,3 +147,11 @@ after T4, T6 after T5. T7 last.
     docs/07 (no float math, no `getMonth()`, no `toFixed`, no `any`).
   - For T5/T6: `getJson` rethrows fetch's `AbortError` untouched, so `use-campaign` must treat
     it as "superseded", not as an error state.
+- T5, done. Test-first: red because the three components were missing (web 31 → 47).
+  - Four breaks each failed the intended test: `v-html` on the message (the XSS test; lint
+    also rejects it with `vue/no-v-html` and `vue/no-child-content`), the message always
+    rendered, the bar not capped at 100, the end line shown when closed.
+  - No `code-reviewer`: presentational components with no input, auth or money logic of their
+    own; self-reviewed (every string through `{{ }}`, amounts only via `formatCents`).
+  - For T6: 375 px wrapping (`overflow-wrap: anywhere`, amounts `nowrap`) is set but unverified
+    until the manual check; jsdom has no layout.
