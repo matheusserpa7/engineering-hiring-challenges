@@ -11,5 +11,5 @@ export default defineConfig({
     proxy: { '/api': 'http://localhost:4000' },
   },
   // Components render into jsdom. It has no layout engine, so layout is checked by hand.
-  test: { environment: 'jsdom' },
+  test: { environment: 'jsdom', setupFiles: ['./test/setup.ts'] },
 });

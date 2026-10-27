@@ -70,13 +70,14 @@ function stub(handlers: {
   return calls;
 }
 
-async function open(path = '/admin', user = adminUser) {
+async function open(path = '/admin', user = adminUser, attach = false) {
   const session = createSession();
   session.state.value = { status: 'signed-in', user };
   const router = createAppRouter(createMemoryHistory(), session);
   await router.push(path);
   const wrapper = mount(App, {
     global: { plugins: [router], provide: { [SESSION_KEY]: session } },
+    ...(attach ? { attachTo: document.body } : {}),
   });
   await flushPromises();
   return { wrapper, router, session };
@@ -308,7 +309,7 @@ describe('admin page: refunds', () => {
     await flushPromises();
   }
 
-  it('opens an inline form for the row, with a labelled reason field', async () => {
+  it('opens a refund dialog, with a labelled reason field', async () => {
     stub({ list: () => json(page([row()])) });
     const { wrapper } = await open();
 
@@ -317,6 +318,72 @@ describe('admin page: refunds', () => {
     const label = wrapper.get('form[data-form="refund"] label');
     expect(label.text()).toBe('Reason for the refund');
     expect(wrapper.get(`#${label.attributes('for') ?? ''}`).element.tagName).toBe('TEXTAREA');
+  });
+
+  it('opens a labelled dialog that names the donor as text and says what changes', async () => {
+    const evil = '<img src=x onerror=alert(1)>';
+    stub({ list: () => json(page([row({ donorName: evil })])) });
+    const { wrapper } = await open();
+
+    await startRefund(wrapper);
+
+    const dialog = wrapper.get('dialog');
+    expect(dialog.attributes('open')).toBeDefined();
+    const heading = wrapper.get(`#${dialog.attributes('aria-labelledby') ?? ''}`);
+    expect(heading.text()).toBe(`Refund $25,000.00 to ${evil}?`);
+    expect(dialog.find('img').exists()).toBe(false);
+    expect(dialog.text()).toContain('Aangan courtyard total goes down by $25,000.00.');
+  });
+
+  it('ignores Escape while a refund is being sent, and closes on it otherwise', async () => {
+    let release: (response: Response) => void = () => undefined;
+    stub({
+      list: () => json(page([row()])),
+      refund: () => new Promise<Response>((resolve) => (release = resolve)),
+    });
+    const { wrapper } = await open();
+    await startRefund(wrapper);
+    await wrapper.get('textarea').setValue(reasonText);
+    await wrapper.get('form[data-form="refund"]').trigger('submit');
+
+    const busyCancel = new Event('cancel', { cancelable: true });
+    wrapper.get('dialog').element.dispatchEvent(busyCancel);
+    expect(busyCancel.defaultPrevented).toBe(true);
+    expect(wrapper.find('dialog').exists()).toBe(true);
+
+    // The browser may close the dialog anyway (a second Escape cannot be cancelled): reopen it.
+    const element = wrapper.get('dialog').element;
+    element.removeAttribute('open');
+    element.dispatchEvent(new Event('close'));
+    expect(element.hasAttribute('open')).toBe(true);
+
+    release(json(row({ status: 'refunded', refundedAt: '2026-10-27T10:00:00.000Z' })));
+    await flushPromises();
+    expect(wrapper.find('dialog').exists()).toBe(false);
+
+    stub({ list: () => json(page([row()])) });
+    const second = await open();
+    await startRefund(second.wrapper);
+    const idleCancel = new Event('cancel', { cancelable: true });
+    second.wrapper.get('dialog').element.dispatchEvent(idleCancel);
+    expect(idleCancel.defaultPrevented).toBe(true);
+    await flushPromises();
+    expect(second.wrapper.find('dialog').exists()).toBe(false);
+  });
+
+  it('moves focus to the notice after a refund, because the button is gone', async () => {
+    stub({
+      list: () => json(page([row()])),
+      refund: () => json(row({ status: 'refunded', refundedAt: '2026-10-27T10:00:00.000Z' })),
+    });
+    const { wrapper } = await open('/admin', adminUser, true);
+    await startRefund(wrapper);
+    await wrapper.get('textarea').setValue(reasonText);
+    await wrapper.get('form[data-form="refund"]').trigger('submit');
+    await flushPromises();
+
+    expect(document.activeElement).toBe(wrapper.get('[role="status"]').element);
+    wrapper.unmount();
   });
 
   it('does not send an empty reason', async () => {

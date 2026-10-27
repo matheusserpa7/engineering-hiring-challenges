@@ -1,6 +1,6 @@
 <script setup lang="ts">
 import type { AdminDonation } from '@aangan/shared';
-import { onMounted, ref } from 'vue';
+import { nextTick, onMounted, ref } from 'vue';
 import { useRoute, useRouter } from 'vue-router';
 import AdminDonationTable from '../components/admin-donation-table.vue';
 import { useAdminDonations } from '../composables/use-admin-donations';
@@ -23,15 +23,25 @@ const STATUS_OPTIONS = [
   { value: 'refunded', label: 'Refunded' },
 ] as const;
 
+const noticeEl = ref<HTMLElement | null>(null);
+
+// The Refund button the dialog would return focus to is gone once the row is refunded, so the
+// notice that says what happened takes focus instead.
+async function showNotice(message: string): Promise<void> {
+  notice.value = message;
+  await nextTick();
+  noticeEl.value?.focus();
+}
+
 function onRefunded(donation: AdminDonation): void {
   refundingId.value = null;
   list.replaceRow(donation);
-  notice.value = `Refunded ${donation.receiptNumber} (${donation.donorName}).`;
+  void showNotice(`Refunded ${donation.receiptNumber} (${donation.donorName}).`);
 }
 
 async function onStale(message: string): Promise<void> {
   refundingId.value = null;
-  notice.value = message;
+  void showNotice(message);
   await list.reload();
 }
 
@@ -44,16 +54,27 @@ onMounted(list.reload);
 </script>
 
 <template>
-  <section aria-labelledby="admin-heading">
-    <h1 id="admin-heading">Donations</h1>
+  <section class="admin" aria-labelledby="admin-heading">
+    <header class="page-head">
+      <p class="eyebrow">Office</p>
+      <h1 id="admin-heading">Donations</h1>
+    </header>
 
-    <form role="search" class="filters" @submit.prevent="list.search">
+    <form role="search" class="filters card" @submit.prevent="list.search">
       <label for="admin-q">Search by name or email</label>
-      <input id="admin-q" v-model="list.q.value" type="search" name="q" autocomplete="off" />
-      <button type="submit">Search</button>
+      <input
+        id="admin-q"
+        v-model="list.q.value"
+        class="input"
+        type="search"
+        name="q"
+        autocomplete="off"
+      />
+      <button type="submit" class="btn primary">Search</button>
       <label for="admin-status">Status</label>
       <select
         id="admin-status"
+        class="input"
         name="status"
         :value="list.statusFilter.value"
         @change="list.setStatus(($event.target as HTMLSelectElement).value as never)"
@@ -64,7 +85,9 @@ onMounted(list.reload);
       </select>
     </form>
 
-    <p v-if="notice !== null" role="status" class="notice">{{ notice }}</p>
+    <p v-if="notice !== null" ref="noticeEl" tabindex="-1" role="status" class="alert ok">
+      {{ notice }}
+    </p>
 
     <p v-if="list.state.value.status === 'loading'" role="status">Loading donations…</p>
 
@@ -72,12 +95,12 @@ onMounted(list.reload);
       <p v-if="list.state.value.forbidden">You do not have access to this page.</p>
       <template v-else>
         <p>Something went wrong. Please try again.</p>
-        <button type="button" @click="list.reload">Retry</button>
+        <button type="button" class="btn" @click="list.reload">Retry</button>
       </template>
     </div>
 
     <template v-else>
-      <p>
+      <p class="count muted num">
         {{ list.state.value.page.total }}
         {{ list.state.value.page.total === 1 ? 'donation' : 'donations' }}
       </p>
@@ -98,6 +121,7 @@ onMounted(list.reload);
       <nav aria-label="Pages" class="pager">
         <button
           type="button"
+          class="btn"
           data-page="previous"
           :disabled="list.state.value.page.page <= 1"
           @click="list.goTo(list.state.value.page.page - 1)"
@@ -110,6 +134,7 @@ onMounted(list.reload);
         </span>
         <button
           type="button"
+          class="btn"
           data-page="next"
           :disabled="list.state.value.page.page >= list.state.value.page.totalPages"
           @click="list.goTo(list.state.value.page.page + 1)"
@@ -122,28 +147,32 @@ onMounted(list.reload);
 </template>
 
 <style scoped>
+.admin {
+  display: grid;
+  gap: 1rem;
+}
+
+.page-head {
+  display: grid;
+  gap: 0.35rem;
+}
+
 .filters {
   display: grid;
   grid-template-columns: 1fr;
   gap: 0.5rem;
-  max-width: 28rem;
-  margin-bottom: 1rem;
+  padding: 1rem;
 }
 
-input,
-select,
-button {
-  box-sizing: border-box;
-  min-height: 2.75rem;
-  padding: 0 0.75rem;
-  font: inherit;
+label {
+  font-weight: 600;
 }
 
-.notice {
-  padding: 0.75rem 1rem;
-  border-radius: 0.5rem;
-  background: #dcfce7;
-  color: #14532d;
+.count {
+  margin: 0;
+}
+
+.alert {
   overflow-wrap: anywhere;
 }
 
@@ -151,7 +180,15 @@ button {
   display: flex;
   flex-wrap: wrap;
   align-items: center;
+  justify-content: center;
   gap: 1rem;
-  margin-top: 1rem;
+}
+
+@media (min-width: 760px) {
+  .filters {
+    grid-template-columns: auto minmax(12rem, 1fr) auto auto auto;
+    align-items: center;
+    gap: 0.5rem 0.75rem;
+  }
 }
 </style>

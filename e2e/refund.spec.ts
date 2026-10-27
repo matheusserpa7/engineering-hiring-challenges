@@ -41,3 +41,31 @@ test('an admin refunds a gift and the total returns', async ({
   await page.goto('/');
   await expect(page.getByText(name)).toHaveCount(0);
 });
+
+test('the refund dialog keeps and returns focus', async ({ page, browserName }) => {
+  test.fixme(
+    browserName !== 'chromium',
+    'showModal focus is only proven on Chromium (tech spec G10)',
+  );
+  await signIn(page, ADMIN);
+  const opener = page.getByRole('button', { name: 'Refund' }).first();
+  await opener.click();
+
+  const dialog = page.getByRole('dialog');
+  await expect(dialog).toBeVisible();
+  await expect(page.getByLabel('Reason for the refund')).toBeFocused();
+  for (let i = 0; i < 6; i++) {
+    await page.keyboard.press('Tab');
+    // Past the last control, Tab leaves for the browser's own UI (focus reads as body), and never
+    // lands on the inert page behind the dialog.
+    expect(
+      await dialog.evaluate(
+        (el) => el.contains(document.activeElement) || document.activeElement === document.body,
+      ),
+    ).toBe(true);
+  }
+
+  await page.keyboard.press('Escape');
+  await expect(dialog).toHaveCount(0);
+  await expect(opener).toBeFocused();
+});
