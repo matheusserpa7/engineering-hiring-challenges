@@ -38,7 +38,7 @@ T2's 413 → T3 (by hand in T11) → T6 (e2e stays local) → T5's `refund` spec
 - [x] **T6 — E2E in CI** (~25 min) · self-review
   - Files: `.github/workflows/ci.yml` (e2e before *rate limits*, report artifact, timeout 20).
   - Done: a pushed run green on both browsers. Commit: `ci: run the Playwright suite against the stack` · Depends: T3, T5
-- [ ] **T7 — Security sweep** (~35 min) · self-review; findings become tasks
+- [x] **T7 — Security sweep** (~35 min) · self-review; findings become tasks
   - Files: `checklist.md` (Security rows); `package-lock.json` only if `npm audit fix` changes it.
   - Test: §6 commands, outputs kept. Commit: `docs: record the security sweep` · Depends: T2
 - [ ] **T8 — READMEs** (~60 min) · self-review
@@ -105,6 +105,9 @@ amended). Self-review.
 **T6.** Locally, with the default limits on a fresh API: Sessions, Payment outcomes, the e2e suite
 (10 passed, 2 skipped on WebKit per G10) and Rate limits pass in CI order. `stack` timeout 20 min;
 `upload-artifact` pinned to the v7.0.2 commit. **Pushed CI run green** ([run 40549949249](https://github.com/matheusserpa7/engineering-hiring-challenges/actions/runs/40549949249), on `f73d958`): every stack step, including *End-to-end tests* (Chromium and WebKit) and *Rate limits*. Self-review.
+
+**T7.** Sweep clean, so no new task: audit 0, gitleaks 3 hits (one fixed test UUID), headers and
+uid as expected, docs/07 greps empty or justified; evidence in `checklist.md`. Self-review.
 
 ## Optional (only with time left)
 
