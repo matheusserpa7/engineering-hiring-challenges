@@ -116,6 +116,11 @@ Each links to its record in [`docs/adr/`](docs/adr/).
 - **API-CONTRACT deviations:** `message` is a top-level request field, not inside `dedication`
   (the seed has messages with no dedication); there is no registration endpoint, since the brief
   puts it out of scope.
+- **Fonts are served by the app itself, and dark mode follows the OS** (spec 011): Figtree,
+  Bricolage Grotesque, JetBrains Mono and Noto Sans Devanagari come from `@fontsource-variable`
+  (SIL OFL 1.1) and are emitted to `/assets/`, so the CSP stays `default-src 'self'` and no
+  visitor's address goes to a font host. The first view downloads about 60 KB of fonts. There is no
+  theme toggle; the colour tokens switch on `prefers-color-scheme`.
 - **Not built:** the CSV export (S0) and the stretch items. I preferred a smaller scope with every
   hard path tested to more features at 70%.
 

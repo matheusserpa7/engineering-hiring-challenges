@@ -8,6 +8,10 @@
   `test-writer`, `code-reviewer` and `qa-verifier` run on Sonnet. A post-edit hook lints the
   edited file and type-checks its package.
 
+- The visual design (spec 011) started as an HTML mockup that Claude produced from the specs and
+  the seed data; the author reviewed it and approved it before `spec-writer` wrote the spec that
+  applies it to the existing screens. The mockup is not part of the repository.
+
 ## Roughly how much
 
 Most of the code and the tests were written by the agent, one task at a time, from a spec

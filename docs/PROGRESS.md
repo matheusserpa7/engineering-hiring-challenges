@@ -21,6 +21,8 @@ record the video, then T13 (link the video, close this file) and the delivery st
 4. Delivery: repo public (or `@sandesPathak` invited), `FirstName_LastName.zip` with `.git` and without
    `node_modules`, and the email from `SUBMISSION.md`. Then stop before any optional spec.
 
+**Spec 011 (visual refresh, from the approved HTML mockup) is implemented and not yet committed:** review the diff, commit one task at a time, then record the video.
+
 ## Phases
 
 | Phase | What | Status |
@@ -42,6 +44,7 @@ record the video, then T13 (link the video, close this file) and the delivery st
 | 004-donation-intake | Implemented, pushed | **9 / 9** |
 | 005-auth-admin-refunds | Implemented, pushed, CI green (run 40540529874) | **10 / 10** (T1 `b58d10f` · T2 `5295230` · T3 `219cda5` · T4 `e3bf653` · T5 `826d46b` · T6 `bdc1aac` · T7 `00c6c7c` · T8 `458a061` · T9 `da7ecba` · T10 in the next commit) |
 | 006-hardening-and-submission | Implemented, pushed except the last commits; waits for the video | **12 / 13** (T13 needs the video link) |
+| 011-visual-refresh | Implemented (T1–T11), QA re-run passed; uncommitted | **11 / 11** |
 | 007 (S0) / 008 (X1) | Optional, only after 006 | — |
 
 ## Git state
