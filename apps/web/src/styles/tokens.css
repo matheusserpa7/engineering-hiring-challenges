@@ -1,0 +1,76 @@
+/* Colour and type tokens. Dark follows the OS setting; there is no toggle.
+   --focus and --line-strong differ from the approved mockup on purpose: its marigold ring
+   (2.3:1) and --line borders (1.3:1) fail the 3:1 that WCAG 1.4.11 asks of UI components. */
+:root {
+  color-scheme: light dark;
+
+  --bg: #f3f6f6;
+  --surface: #ffffff;
+  --surface-2: #eaf0f0;
+  --ink: #10232a;
+  --muted: #55696f;
+  --line: #d9e2e3;
+  --line-strong: #6f858b;
+  --focus: #07504c;
+
+  --brand: #0b6b66;
+  --brand-ink: #ffffff;
+  --brand-soft: #e0f0ee;
+  --brand-strong: #07504c;
+  --marigold: #e39e0b;
+  --marigold-soft: #fcf0d4;
+  --marigold-ink: #734d00;
+
+  --ok: #1a7547;
+  --ok-soft: #e1f2e8;
+  --warn: #955800;
+  --warn-soft: #fbeed6;
+  --bad: #b42318;
+  --bad-soft: #fbe7e4;
+  --info: #2e54c4;
+  --info-soft: #e6ecfb;
+
+  --shadow: 0 1px 2px rgb(16 35 42 / 6%), 0 10px 28px rgb(16 35 42 / 7%);
+  --radius: 10px;
+
+  --font-display:
+    'Bricolage Grotesque Variable', 'Noto Sans Devanagari Variable', system-ui, 'Segoe UI',
+    sans-serif;
+  --font-body:
+    'Figtree Variable', 'Noto Sans Devanagari Variable', system-ui, -apple-system, 'Segoe UI',
+    sans-serif;
+  --font-mono:
+    'JetBrains Mono Variable', 'Noto Sans Devanagari Variable', ui-monospace, Consolas, monospace;
+}
+
+@media (prefers-color-scheme: dark) {
+  :root {
+    --bg: #0a1316;
+    --surface: #101c20;
+    --surface-2: #16282d;
+    --ink: #e3ecee;
+    --muted: #93a6ac;
+    --line: #22363c;
+    --line-strong: #62797f;
+    --focus: #f2b43a;
+
+    --brand: #35bcb1;
+    --brand-ink: #04201e;
+    --brand-soft: #11393a;
+    --brand-strong: #63d4ca;
+    --marigold: #f2b43a;
+    --marigold-soft: #372b10;
+    --marigold-ink: #f6cc73;
+
+    --ok: #4dc488;
+    --ok-soft: #113226;
+    --warn: #e6a54b;
+    --warn-soft: #382910;
+    --bad: #f2786c;
+    --bad-soft: #3a1714;
+    --info: #88a4ff;
+    --info-soft: #19244a;
+
+    --shadow: 0 1px 2px rgb(0 0 0 / 30%), 0 10px 28px rgb(0 0 0 / 28%);
+  }
+}

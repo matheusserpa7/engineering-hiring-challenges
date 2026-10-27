@@ -21,6 +21,10 @@
   },
   "dependencies": {
     "@aangan/shared": "^0.0.0",
+    "@fontsource-variable/bricolage-grotesque": "^5.3.0",
+    "@fontsource-variable/figtree": "^5.3.0",
+    "@fontsource-variable/jetbrains-mono": "^5.3.0",
+    "@fontsource-variable/noto-sans-devanagari": "^5.3.0",
     "vue": "^3.5.44",
     "vue-router": "^5.4.0",
     "zod": "^4.6.7"

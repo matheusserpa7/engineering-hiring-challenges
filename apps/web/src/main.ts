@@ -1,3 +1,5 @@
+import './styles/tokens.css';
+import './styles/base.css';
 import './zod-config';
 import { createApp } from 'vue';
 import App from './App.vue';
