@@ -29,6 +29,9 @@ given. Also the spec task it implements (`docs/specs/NNN-slug/`).
    naming or error shapes.
 5. **Explainability:** anything the user could not defend in one sentence, any dead code,
    any abstraction with a single caller.
+6. **Claims:** every factual claim in the task's spec note or comments ("resolved against
+   the repo root", "never logs the row") against what the code and tests actually do. A
+   claim the code contradicts is a Major, even when the code itself is fine.
 
 Run lint, typecheck and the relevant tests, and report their result.
 

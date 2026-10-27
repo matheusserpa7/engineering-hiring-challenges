@@ -28,7 +28,7 @@ For every request that changes code, configuration, infrastructure or tests, fol
    - For each task: affected files, definition of done and corresponding test
    - Order and dependencies between tasks
 4. STOP and give me a short summary (5–10 lines) of the PRD and Tech Spec, including the decisions I need to be able to defend. Only proceed after my "ok".
-5. During execution: mark each task as done in tasks.md. If anything changes along the way, update the spec BEFORE changing the code and tell me.
+5. During execution: mark each task as done in tasks.md. If a decision, a contract or an acceptance criterion changes along the way, update the spec BEFORE changing the code and tell me. Corrections that change no decision go in the task's note, once, after the review fixes (see Agents → Lean workflow).
 
 Proportionality: for trivial changes (typo, one-line config tweak, renaming), use a short version — a single docs/specs/NNN-slug/mini-spec.md with goal, change and test — but still ask for my ok. Keep documents concise: specs exist to make decisions and show reasoning, not to add volume.
 
@@ -36,9 +36,10 @@ Proportionality: for trivial changes (typo, one-line config tweak, renaming), us
 
 - The user must be able to explain every line live. Never write a large block of code
   without stopping for review. Small steps, one task at a time.
-- Per task: test → implementation → run checks → `code-reviewer` on the diff → fix → tick
-  the task in `tasks.md` → show a short diff summary, the decisions to defend and the
-  proposed commit message.
+- Per task: test → implementation → run checks → `code-reviewer` on the diff (when required,
+  see Agents) → fix everything it raised → one spec update → tick the task in `tasks.md` →
+  show a short diff summary (at most ten lines), the decisions to defend and the proposed
+  commit message.
 - **Commit only on the user's explicit go-ahead.** Commit as the configured git user. Never
   add a `Co-Authored-By` trailer or any "Generated with" line. AI use is disclosed in
   `AI-USAGE.md`, not in commits.
@@ -159,10 +160,31 @@ these exist yet.
 typechecks its package.
 
 The session default in `.claude/settings.json` is `sonnet`, at that model's own default
-effort (medium). Leave the picker there: that session implements an approved task. Spec
-files are written only by `spec-writer` (`opus`, effort `high`). Delegate without passing
-a model or an effort. `test-writer` and `qa-verifier` are `sonnet` at `medium`;
-`code-reviewer` is `sonnet` at `high` (spec 009).
+effort (medium). Leave the picker there: that session implements an approved task. Delegate
+without passing a model or an effort. `spec-writer` is `opus` at `high`; `test-writer` and
+`qa-verifier` are `sonnet` at `medium`; `code-reviewer` is `sonnet` at `high` (spec 009).
+
+### Lean workflow (spec 010)
+
+Subagent tokens were the main cost of spec 002, so each call has to earn its place:
+
+- **`spec-writer`** drafts new PRDs, tech specs and task lists, and any change to a
+  decision, a contract or an acceptance criterion. The main session may tick tasks, write
+  execution notes and correct facts that change no decision.
+- **One spec update per task**, after the review fixes, in the same commit. Never launch
+  `spec-writer` and `code-reviewer` on the same task at the same time.
+- **`code-reviewer` is required** for money, authentication and authorisation, concurrency
+  and idempotency, input validation, logging of personal data, SQL and migrations, and new
+  public API. For docs, config or infra under about 30 changed lines, and pure refactors, a
+  self-review against the `docs/07` table is enough. The reviewer also checks each claim in
+  the task's spec note against the code.
+- **Delegate with the exact files, line ranges and contract.** A `test-writer` reads in full,
+  or is handed, the data its assertions rest on: do not let it trust a README summary.
+- **Notes stay short.** Execution notes in `tasks.md` are at most four bullets: what proved
+  the tests bite, the review outcome, accepted risks with the reason, and notes for later
+  specs. Update `docs/PROGRESS.md` when a spec closes or a session ends, not per task.
+- **Spec size:** PRD up to about 120 lines, tech spec about 200, tasks about 80. Optional
+  items go in one list.
 
 ## References
 
