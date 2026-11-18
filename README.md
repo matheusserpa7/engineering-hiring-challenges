@@ -182,8 +182,9 @@ State-changing requests must come from an origin in `ALLOWED_ORIGINS`, or they a
 `origin_not_allowed`. Full details, status codes and the donation example are in
 [`apps/api/README.md`](apps/api/README.md).
 
-**Prove the idempotency yourself.** The reference `concurrency-burst.mjs` sends no
-`Idempotency-Key`, so against this API it only gets 400s. Twenty parallel requests sharing one key:
+**Idempotency under a burst.** The reference `concurrency-burst.mjs` sends no
+`Idempotency-Key`, so this API answers it with 400s. This script sends twenty parallel
+requests that share one key:
 
 ```bash
 key=$(node -p 'crypto.randomUUID()')
@@ -194,7 +195,7 @@ for i in $(seq 20); do
 done | sort | uniq -c
 ```
 
-You should see one `201` and the rest `201` replays or `409`, never a second charge: check
+The result is one `201`, the rest `201` replays or `409`, and a single charge:
 `docker compose logs api | grep -c "donation processed"` goes up by one.
 
 ## Working with the fork
